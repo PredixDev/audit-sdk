@@ -1,0 +1,26 @@
+{
+  "audit-service": [
+    {
+      "credentials": {
+        "audit-pub-client-scope": [
+          "predix-event-hub.zones.92460d27-6623-4f1a-98bb-e28395ea61fa.user",
+          "predix-event-hub.zones.92460d27-6623-4f1a-98bb-e28395ea61fa.grpc.publish"
+        ],
+        "audit-query-api-scope": "audit.zones.83f75c67-85ac-4556-a2f7-989088d9ea80.user",
+        "audit-query-api-url": "https://audit-service.run.asv-pr.ice.predix.io",
+        "event-hub-uri": "ehub.asv-pr.ice.predix.io:443",
+        "event-hub-zone-id": "eb7669e6-43f7-4e0f-9bcd-eb33d0ce3ca9",
+        "tracing-url": "https://message-tracing.run.asv-pr.ice.predix.io/v1/checpoint",
+        "tracing-token": "token",
+        "tracing-interval": 900000
+      },
+      "label": "audit-service",
+      "name": "publisher1",
+      "plan": "free",
+      "provider": null,
+      "syslog_drain_url": null,
+      "tags": [],
+      "volume_mounts": []
+    }
+  ]
+}
