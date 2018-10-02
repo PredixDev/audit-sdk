@@ -1,7 +1,7 @@
-<a href="../../../../pages/adoption/audit-sdk/javadocs/index.html" target="_blank" >
+<a href="../../../../pages/adoption/audit-sdk/javadocs/index.html" target="\_blank" >
 	<img height="50px" width="100px" src="images/javadoc.png" alt="view javadoc"></a>
-&nbsp;
-<a href="../../../../pages/adoption/audit-sdk" target="_blank">
+
+<a href="../../../../pages/adoption/audit-sdk" target="\_blank">
 	<img height="50px" width="100px" src="images/pages.jpg" alt="view github pages">
 </a>
 
@@ -19,7 +19,7 @@ Use the SDK to publish audit messages using the Audit client.
     <dependency>
       <groupId>com.ge.predix</groupId>
       <artifactId>audit-sdk</artifactId>
-      <version>1.0.0</version>
+      <version>1.0.1</version>
     </dependency>
 ```
 
@@ -175,7 +175,7 @@ Here is an example:
 #### Additional API
 
 ##### Reconnect option
- Occasionally, audit client can be disconnected. In such a case, you receive an ```onFailure``` callback with ```FailReport.STREAM_IS_CLOSE``` 
+ Occasionally, audit client can be disconnected. In such a case, you receive an ```onFailure``` callback with ```FailReport.STREAM_IS_CLOSE```
  **This notification is currently available only for ASYNC mode**.
 
  There are two ways to handle reconnection:
@@ -192,10 +192,10 @@ AuditConfiguration.builder()
 The sdk supports two modes of authentication:
  - Using a UAA user and pass. Use the `AuditConfiguration.builder()` to obtain a regular, UAA based configuration.
  - Using an authentication token. Use the `AuditConfiguration.builderWithAuthToken()` to obtain an auth token based configuration.
- 
+
  Once a client was created, its authentication mode cannot be changed.
  When working with authentication token, you might need to refresh the token. This can be achieved by running the `auditClient.setAuthToken(token)` API.
- 
+
  Please note that this API throws IllegalStateException if executed on a client configured with UAA authentication mode.
 
 ----
@@ -221,12 +221,11 @@ AuditConfiguration.builder()
 If APPLICATION_NAME variable was set in the environment, it will be added to each message and there is no need to explicitly provide it when building the message.
 
 #### For more information about the api: https://docs.predix.io/en-US/content/service/security/audit/using-predix-audit-service
-   
+
 ----
-# Example Projects: 
+# Example Projects:
 - https://github.com/PredixDev/samplePublisherApp
 - https://github.com/PredixDev/samplePub-POJO
 
 
 [![Analytics](https://ga-beacon.appspot.com/UA-82773213-1/audit-sdk/readme?pixel)](https://github.com/PredixDev)
-

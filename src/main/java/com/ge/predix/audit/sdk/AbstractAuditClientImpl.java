@@ -83,7 +83,7 @@ public abstract class AbstractAuditClientImpl implements CommonClientInterface {
 
 	/**
 	 * Reconnect audit client manually
-	 * @throws EventHubClientException
+	 * @throws EventHubClientException in case of EventHub failure
 	 */
 	@Override
 	public synchronized void reconnect() throws EventHubClientException {

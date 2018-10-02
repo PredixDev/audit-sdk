@@ -14,7 +14,7 @@ import java.util.Optional;
 public interface TracingHandler {
 
     /**
-     * @returns AuditTracingEvent optional.
+     * @return AuditTracingEvent optional.
      * it will return the sent message or null if no message was sent
      */
     Optional<AuditTracingEvent> sendInitialCheckpoint();

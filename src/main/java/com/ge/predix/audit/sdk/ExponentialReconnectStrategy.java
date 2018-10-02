@@ -25,6 +25,7 @@ public class ExponentialReconnectStrategy implements ReconnectStrategy {
     private volatile AtomicInteger curIndex;
     private volatile AtomicBoolean isBetweenIntervals;
     private volatile AtomicBoolean shouldReconnectNextInterval;
+    private volatile AuditCommonClientState auditCommonClientState;
 
     public ExponentialReconnectStrategy(Runnable actionToPerform) {
         threadExecutor = Executors.newSingleThreadScheduledExecutor();
@@ -36,6 +37,7 @@ public class ExponentialReconnectStrategy implements ReconnectStrategy {
 
     @Override
     public synchronized void notifyStateChanged(AuditCommonClientState auditCommonClientState)  {
+        this.auditCommonClientState = auditCommonClientState;
         switch (auditCommonClientState){
             case DISCONNECTED:{
                 if (!isBetweenIntervals.get()) {
@@ -53,6 +55,12 @@ public class ExponentialReconnectStrategy implements ReconnectStrategy {
                 shouldReconnectNextInterval.set(false);
                 shutdown();
             }
+            case CONNECTING:{
+                shouldReconnectNextInterval.set(true);
+            }
+            case CONNECTED:{
+                shouldReconnectNextInterval.set(false);
+            }
             default:
                 break;
         }
@@ -60,18 +68,19 @@ public class ExponentialReconnectStrategy implements ReconnectStrategy {
 
     synchronized void handleInterval()  {
          log.info("Running reconnect algo: shouldReconnect: "+shouldReconnectNextInterval+" index: "+curIndex);
-        if (shouldReconnectNextInterval.get()) {
+         if (shouldReconnectNextInterval.get()) {
             try {
                 if(actionToPerform != null) {
                     actionToPerform.run();
                 }
+               // if (!)
             } catch (Exception e) {
                 log.warn("failed to perform reconnect: "+e.getMessage());
             }
             if (curIndex.get() < reconnectIntervalsMillis.length) {
                 curIndex.incrementAndGet();
             }
-            shouldReconnectNextInterval.set(false);
+            //shouldReconnectNextInterval.set(false);
             threadExecutor.schedule(this::handleInterval, reconnectIntervalsMillis[curIndex.get()], TimeUnit.MILLISECONDS);
         } else {
             curIndex.set(0);

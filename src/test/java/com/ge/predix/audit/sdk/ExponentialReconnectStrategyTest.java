@@ -11,26 +11,43 @@ import static org.mockito.Mockito.*;
 /**
  * Created by 212582776 on 2/15/2018.
  */
+
 public class ExponentialReconnectStrategyTest {
 
-    public static class DoNothingRunnable implements Runnable{
+
+    public  class NotifyConnectedRunnable implements Runnable{
+
+
 
         @Override
         public void run() {
-
+            exponentialReconnectStrategy.notifyStateChanged(AuditCommonClientState.CONNECTED);
         }
     }
 
-    public static class ThrowsRuntimeExceptionRunnable implements Runnable{
+    public  class ThrowsRuntimeExceptionRunnable implements Runnable{
 
         @Override
         public void run() {
+            exponentialReconnectStrategy.notifyStateChanged(AuditCommonClientState.CONNECTING);
             throw new RuntimeException("exception");
+
         }
     }
 
-    private DoNothingRunnable doNothingRunnable = spy(new DoNothingRunnable());
+    public  class ReconnectFailureRunnable implements Runnable{
+
+        @Override
+        public void run() {
+            exponentialReconnectStrategy.notifyStateChanged(AuditCommonClientState.CONNECTING);
+            exponentialReconnectStrategy.notifyStateChanged(AuditCommonClientState.DISCONNECTED);
+        }
+    }
+
+    private NotifyConnectedRunnable doNothingRunnable = spy(new NotifyConnectedRunnable());
+    private ReconnectFailureRunnable reconnectFailureRunnable = spy(new ReconnectFailureRunnable());
     private ThrowsRuntimeExceptionRunnable throwsRuntimeExceptionRunnable = spy(new ThrowsRuntimeExceptionRunnable());
+
 
     @Spy
     ExponentialReconnectStrategy exponentialReconnectStrategy;
@@ -114,11 +131,22 @@ public class ExponentialReconnectStrategyTest {
 
     @Test
     public void notifyStateChange_actionThrowsException_reconnectContinues() throws Exception {
-        exponentialReconnectStrategy = spy(new ExponentialReconnectStrategy(throwsRuntimeExceptionRunnable));
+        exponentialReconnectStrategy = spy(new ExponentialReconnectStrategy(reconnectFailureRunnable));
         setBackoff();
         exponentialReconnectStrategy.notifyStateChanged(AuditCommonClientState.DISCONNECTED);
-        Thread.sleep(500);
+        Thread.sleep(150);
+        verify(exponentialReconnectStrategy,times(1)).handleInterval();
+        verify(reconnectFailureRunnable,times(1)).run();
+        Thread.sleep(200);
         verify(exponentialReconnectStrategy,times(2)).handleInterval();
-        verify(throwsRuntimeExceptionRunnable,times(1)).run();
+        verify(reconnectFailureRunnable,times(2)).run();
+
+        doAnswer(invocation -> {
+            exponentialReconnectStrategy.notifyStateChanged(AuditCommonClientState.CONNECTED); return null;}).when(reconnectFailureRunnable).run();
+
+        Thread.sleep(1000);
+        verify(exponentialReconnectStrategy,times(4)).handleInterval();
+        verify(reconnectFailureRunnable,times(3)).run();
+
     }
 }

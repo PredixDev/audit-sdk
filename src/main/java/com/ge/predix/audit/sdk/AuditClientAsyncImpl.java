@@ -147,7 +147,7 @@ final public class AuditClientAsyncImpl extends AbstractAuditClientImpl {
 		});
 	}
 
-	private  void innerReconnect(){
+	private  synchronized void innerReconnect(){
 		try {
 			reconnect();
 		} catch (EventHubClientException e) {

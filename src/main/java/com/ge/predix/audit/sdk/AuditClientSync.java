@@ -97,6 +97,8 @@ public class AuditClientSync {
 
     /**
      * Returns the state of this client.
+     *
+     * @return state of Audit Client
      */
     public AuditClientState getState(){
         return auditClientSyncImpl.getAuditClientState();

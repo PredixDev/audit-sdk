@@ -103,6 +103,8 @@ public class AuditClient {
 
     /**
      * Returns the state of this client.
+     *
+     * @return state of Audit Client
      */
     public AuditClientState getState(){
         return auditClientAsyncImpl.getAuditClientState();
