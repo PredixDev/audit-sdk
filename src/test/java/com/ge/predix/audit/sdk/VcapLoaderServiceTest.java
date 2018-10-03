@@ -1,24 +1,29 @@
 package com.ge.predix.audit.sdk;
 
-import com.ge.predix.audit.sdk.config.AuditConfiguration;
-import com.ge.predix.audit.sdk.config.ReconnectMode;
+import com.ge.predix.audit.sdk.config.*;
 import com.ge.predix.audit.sdk.config.vcap.VcapLoaderServiceImpl;
 import com.ge.predix.audit.sdk.config.vcap.VcapServices;
 import com.ge.predix.audit.sdk.exception.VcapLoadException;
+import com.ge.predix.audit.sdk.util.EnvUtils;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.powermock.api.mockito.PowerMockito;
+import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
 import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertThat;
+import static org.junit.Assert.*;
 
 /**
  * Created by Igor on 20/11/2016.
  */
+@RunWith(PowerMockRunner.class)
+@PrepareForTest( { EnvUtils.class })
 public class VcapLoaderServiceTest {
 
     public static final String AUDIT_SERVICE = "audit-service";
@@ -29,7 +34,7 @@ public class VcapLoaderServiceTest {
     private VcapLoaderServiceImpl vcapLoaderService;
 
     @Before
-    public void setUp(){
+    public void setUp() throws InterruptedException {
         vcapLoaderService = new VcapLoaderServiceImpl();
         vcapLoaderService.setAuditServiceName(AUDIT_SERVICE);
         vcapLoaderService.setUaaUrl(UAA_URL);
@@ -164,6 +169,116 @@ public class VcapLoaderServiceTest {
         assertThat(configFromVcap.getMaxRetryCount(),is(AuditConfiguration.DEFAULT_RETRY_COUNT));
         assertThat(configFromVcap.getReconnectMode(),is(ReconnectMode.MANUAL));
         assertNull(configFromVcap.getClientType());
+    }
+
+    @Test
+    public void loadRoutingConfigurationFromVcapOptionalParamsNotPresent_ConfigurationIsCreatedWithDefault() throws IOException, VcapLoadException {
+        RoutingAuditConfiguration expected = setUpDefaultRoutingConfig();
+
+        RoutingAuditConfiguration configuration = vcapLoaderService.getRoutingConfigFromVcap();
+
+        assertEquals(expected, configuration);
+    }
+
+    private RoutingAuditConfiguration setUpDefaultRoutingConfig() throws IOException {
+        setValidVcapServicesAndApplication();
+
+        String auditServiceName = AUDIT_SERVICE;
+        String auditUaaUrl = UAA_URL;
+        String auditUaaClientId = UAA_CLIENT_ID;
+        String auditUaaClientSecret = UAA_CLIENT_SECRET;
+
+        String systemIssuer = "http://www.uaa.com";
+        String applicationClientId = "applicationClientId";
+        String applicationClientSecret = "applicationClientSecret";
+        String auditSystemClientId = "systemClientId";
+        String auditSystemClientSecret = "auditSystemClientSecret";
+        String tmsUrl = "http://tms.com";
+        String tokenServiceUrl = "http://tokenService.com";
+        PowerMockito.mockStatic(System.class);
+        PowerMockito.when(System.getenv("AUDIT_SERVICE_NAME")).thenReturn(auditServiceName);
+        PowerMockito.when(System.getenv("AUDIT_UAA_URL")).thenReturn(auditUaaUrl);
+        PowerMockito.when(System.getenv("AUDIT_UAA_CLIENT_ID")).thenReturn(auditUaaClientId);
+        PowerMockito.when(System.getenv("AUDIT_UAA_CLIENT_SECRET")).thenReturn(auditUaaClientSecret);
+        PowerMockito.when(System.getenv("AUDIT_SYSTEM_TRUSTED_ISSUER")).thenReturn(systemIssuer);
+        PowerMockito.when(System.getenv("AUDIT_APP_NAME_CLIENT_ID")).thenReturn(applicationClientId);
+        PowerMockito.when(System.getenv("AUDIT_APP_NAME_CLIENT_SECRET")).thenReturn(applicationClientSecret);
+        PowerMockito.when(System.getenv("AUDIT_SYSTEM_CLIENT_ID")).thenReturn(auditSystemClientId);
+        PowerMockito.when(System.getenv("AUDIT_SYSTEM_CLIENT_SECRET")).thenReturn(auditSystemClientSecret);
+        PowerMockito.when(System.getenv("AUDIT_TMS_URL")).thenReturn(tmsUrl);
+        PowerMockito.when(System.getenv("AUDIT_TOKEN_SERVICE_URL")).thenReturn(tokenServiceUrl);
+
+        return RoutingAuditConfiguration.builder()
+                .appNameConfig(AppNameConfig.builder()
+                        .clientId(applicationClientId)
+                        .clientSecret(applicationClientSecret)
+                        .uaaUrl(systemIssuer)
+                        .build())
+                .sharedAuditConfig(SharedAuditConfig.builder()
+                        .ehubUrl("ehub.asv-pr.ice.predix.io:443")
+                        .ehubZoneId("eb7669e6-43f7-4e0f-9bcd-eb33d0ce3ca9")
+                        .auditZoneId("83f75c67-85ac-4556-a2f7-989088d9ea80")
+                        .uaaClientId(auditUaaClientId)
+                        .uaaClientSecret(auditUaaClientSecret)
+                        .uaaUrl(auditUaaUrl)
+                        .tracingToken("token")
+                        .tracingUrl("https://message-tracing.run.asv-pr.ice.predix.io/v1/checpoint")
+                        .build())
+                .systemConfig(SystemConfig.builder()
+                        .clientId(auditSystemClientId)
+                        .clientSecret(auditSystemClientSecret)
+                        .tokenServiceUrl(tokenServiceUrl)
+                        .tmsUrl(tmsUrl)
+                        .build())
+                .tenantAuditConfig(TenantAuditConfig.builder()
+                        .auditServiceName(auditServiceName)
+                        .bulkMode(true)
+                        .maxNumberOfEventsInCachePerTenant(AbstractAuditConfiguration.DEFAULT_CACHE_SIZE)
+                        .maxRetryCount(AbstractAuditConfiguration.DEFAULT_RETRY_COUNT)
+                        .retryIntervalMillis(AbstractAuditConfiguration.DEFAULT_RETRY_INTERVAL_MILLIS)
+                        .spaceName("dev")
+                        .traceEnabled(true)
+                        .tracingInterval(900000)
+                        .build())
+                .routingResourceConfig(RoutingResourceConfig.builder()
+                        .numOfConnections(100)
+                        .cacheRefreshPeriod(1000 * 60 * 2)
+                        .connectionLifetime(1000 * 60 * 10)
+                        .maxConcurrentAuditRequest(150000)
+                        .sharedTenantCacheSize(10000)
+                        .build())
+                .build();
+    }
+
+    @Test
+    @PrepareForTest( { EnvUtils.class })
+    public void loadRoutingConfigurationFromVcapOptionalParamsPresent_ConfigurationIsCreated() throws IOException, VcapLoadException {
+        setUpDefaultRoutingConfig();
+        int num = 20000;
+        String numAsAString = String.valueOf(num);
+        long numAsALong = Long.valueOf(numAsAString);
+        int retryCount = 4;
+        vcapLoaderService.setMaxRetries(String.valueOf(retryCount));
+        vcapLoaderService.setRetryIntervalMillis(numAsAString);
+        vcapLoaderService.setMaxCachedEvents(numAsAString);
+        PowerMockito.when(System.getenv("AUDIT_MAX_CACHED_EVENTS")).thenReturn(numAsAString);
+        PowerMockito.when(System.getenv("AUDIT_ROUTING_NUM_OF_CONNECTIONS")).thenReturn(numAsAString);
+        PowerMockito.when(System.getenv("AUDIT_ROUTING_SHARED_CACHE_SIZE")).thenReturn(numAsAString);
+        PowerMockito.when(System.getenv("AUDIT_ROUTING_CACHE_REFRESH_PERIOD")).thenReturn(numAsAString);
+        PowerMockito.when(System.getenv("AUDIT_ROUTING_CONNECTION_LIFETIME")).thenReturn(numAsAString);
+        PowerMockito.when(System.getenv("AUDIT_ROUTING_MAX_CONCURRENT_REQUESTS")).thenReturn(numAsAString);
+
+        RoutingAuditConfiguration configuration = vcapLoaderService.getRoutingConfigFromVcap();
+
+        assertEquals(retryCount, configuration.getTenantAuditConfig().getMaxRetryCount());
+        assertEquals(num, configuration.getTenantAuditConfig().getMaxNumberOfEventsInCachePerTenant());
+        assertEquals(numAsALong, configuration.getTenantAuditConfig().getRetryIntervalMillis());
+        assertEquals(num, configuration.getTenantAuditConfig().getMaxNumberOfEventsInCachePerTenant());
+        assertEquals(num, configuration.getRoutingResourceConfig().getNumOfConnections());
+        assertEquals(num, configuration.getRoutingResourceConfig().getMaxConcurrentAuditRequest());
+        assertEquals(numAsALong, configuration.getRoutingResourceConfig().getConnectionLifetime());
+        assertEquals(numAsALong, configuration.getRoutingResourceConfig().getCacheRefreshPeriod());
+        assertEquals(num, configuration.getRoutingResourceConfig().getSharedTenantCacheSize());
     }
 
     @Test

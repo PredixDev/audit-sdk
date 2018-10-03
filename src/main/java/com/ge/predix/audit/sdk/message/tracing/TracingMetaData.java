@@ -31,5 +31,4 @@ public class TracingMetaData implements Serializable{
     private int cacheSize;
     private ReconnectMode reconnectMode;
     private AuthenticationMethod authenticationMethod;
-
 }

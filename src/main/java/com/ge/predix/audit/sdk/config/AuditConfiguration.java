@@ -1,14 +1,12 @@
 package com.ge.predix.audit.sdk.config;
 
 
-import javax.validation.constraints.Max;
-import javax.validation.constraints.Min;
-
 import com.ge.predix.audit.sdk.AuditClientType;
 import com.ge.predix.audit.sdk.AuthenticationMethod;
-import com.ge.predix.audit.sdk.config.vcap.VcapApplication;
-
 import lombok.*;
+import lombok.experimental.Accessors;
+
+import javax.validation.constraints.Min;
 
 /**
  * @author Kobi (212584872) on 1/10/2017.
@@ -18,18 +16,8 @@ import lombok.*;
 @Getter
 @EqualsAndHashCode
 @ToString
-@Setter()
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-public class AuditConfiguration {
-    public static final int MAX_RETRY_COUNT = 5;
-    public static final int DEFAULT_RETRY_COUNT = 2;
-    public static final int MIN_RETRY_COUNT = 0;
-    public static final long MAX_RETRY_INTERVAL_MILLIS = 20000;
-    public static final long DEFAULT_RETRY_INTERVAL_MILLIS = 10000;
-    public static final long MIN_RETRY_INTERVAL_MILLIS = 2000;
-    public static final int DEFAULT_CACHE_SIZE = 50000;
-    public static final int MIN_CACHE_SIZE = 1000;
-
+@Setter
+public class AuditConfiguration extends AbstractAuditConfiguration {
 
     private String uaaUrl;
     private String uaaClientId;
@@ -37,35 +25,59 @@ public class AuditConfiguration {
     private String ehubZoneId;
     private String ehubHost;
     private int ehubPort;
-    private Boolean bulkMode;
-    private String tracingUrl;
-    private String tracingToken;
-    private long tracingInterval;
-    private String auditServiceName;
-    private String appName;
-    private String spaceName;
-    @Max(MAX_RETRY_COUNT)
-    @Min(MIN_RETRY_COUNT)
-    private int maxRetryCount;
-    @Max(MAX_RETRY_INTERVAL_MILLIS)
-    @Min(MIN_RETRY_INTERVAL_MILLIS)
-    private long retryIntervalMillis;
+ //   private String appName;
     @Min(MIN_CACHE_SIZE)
     private int maxNumberOfEventsInCache;
     private ReconnectMode reconnectMode;
-    private boolean traceEnabled;
     private String authToken;
     @Deprecated
     private AuditClientType clientType;
     @Setter(AccessLevel.NONE) //this is not exposed to the user. for internal use only
     private AuthenticationMethod authenticationMethod;
+    private String tracingUrl;
+    private String tracingToken;
+    private String auditZoneId;
 
+    private AuditConfiguration(String uaaUrl, String uaaClientId, String uaaClientSecret,
+                               String ehubZoneId,  String ehubHost, int ehubPort, boolean bulkMode,
+                               String tracingUrl, String tracingToken, long tracingInterval,
+                               String auditServiceName, String cfAppName, String spaceName,
+                               int maxRetryCount, long retryIntervalMillis, int maxNumberOfEventsInCache,
+                               ReconnectMode reconnectMode, boolean traceEnabled, String authToken,
+                               AuditClientType clientType, AuthenticationMethod authenticationMethod, String auditZoneId
+    ) {
+        super(bulkMode, tracingInterval, auditServiceName, spaceName, maxRetryCount, retryIntervalMillis, traceEnabled, cfAppName);
+        this.tracingUrl = tracingUrl;
+        this.tracingToken = tracingToken;
+        this.uaaUrl = uaaUrl;
+        this.uaaClientId = uaaClientId;
+        this.uaaClientSecret = uaaClientSecret;
+        this.ehubZoneId = ehubZoneId;
+        this.ehubHost = ehubHost;
+        this.ehubPort = ehubPort;
+        this.reconnectMode = reconnectMode;
+        this.maxNumberOfEventsInCache = maxNumberOfEventsInCache;
+        this.authToken = authToken;
+        this.clientType = clientType;
+        this.authenticationMethod = authenticationMethod;
+        this.auditZoneId = auditZoneId;
 
-    public void updateAppNameAndSpace(VcapApplication vcapApplication) {
-        if (null != vcapApplication) {
-            appName = vcapApplication.getAppName();
-            spaceName = vcapApplication.getSpaceName();
-        }
+    }
+
+    @Deprecated
+    /**
+     * @deprecated  As of release 1.3.0, replaced by {@link #setCfAppName(String)} ()}
+     */
+    public void setAppName(String appName) {
+        setCfAppName(appName);
+    }
+
+    @Deprecated
+    /**
+     * @deprecated  As of release 1.3.0, replaced by {@link #getCfAppName()}  ()}
+     */
+    public String getAppName() {
+       return getCfAppName();
     }
 
     public static AuditConfigurationWithAuthTokenBuilder builderWithAuthToken(){
@@ -83,21 +95,22 @@ public class AuditConfiguration {
                 auditConfiguration.ehubZoneId,
                 auditConfiguration.ehubHost,
                 auditConfiguration.ehubPort,
-                auditConfiguration.bulkMode,
+                auditConfiguration.getBulkMode(),
                 auditConfiguration.tracingUrl,
                 auditConfiguration.tracingToken,
-                auditConfiguration.tracingInterval,
-                auditConfiguration.auditServiceName,
-                auditConfiguration.appName,
-                auditConfiguration.auditServiceName,
-                auditConfiguration.maxRetryCount,
-                auditConfiguration.retryIntervalMillis,
+                auditConfiguration.getTracingInterval(),
+                auditConfiguration.getAuditServiceName(),
+                auditConfiguration.getCfAppName(),
+                auditConfiguration.getSpaceName(),
+                auditConfiguration.getMaxRetryCount(),
+                auditConfiguration.getRetryIntervalMillis(),
                 auditConfiguration.maxNumberOfEventsInCache,
                 auditConfiguration.reconnectMode,
-                auditConfiguration.traceEnabled,
+                auditConfiguration.isTraceEnabled(),
                 auditConfiguration.authToken,
                 auditConfiguration.clientType,
-                auditConfiguration.authenticationMethod);
+                auditConfiguration.authenticationMethod,
+                auditConfiguration.auditZoneId);
     }
 
     /****************************** BUILDERS **************************/
@@ -110,33 +123,43 @@ public class AuditConfiguration {
         protected String tracingToken;
         protected long tracingInterval;
         protected String auditServiceName;
-        protected String appName;
+        protected String cfAppName;
         protected String spaceName;
         protected Boolean bulkMode = true;
         protected int maxRetryCount = DEFAULT_RETRY_COUNT;
         protected long retryIntervalMillis = DEFAULT_RETRY_INTERVAL_MILLIS;
         protected int maxNumberOfEventsInCache = DEFAULT_CACHE_SIZE;
         protected ReconnectMode reconnectMode = ReconnectMode.MANUAL;
-        protected boolean traceEnabled = true;
+        protected boolean traceEnabled = false;
         protected AuthenticationMethod authenticationMethod = AuthenticationMethod.UAA_USER_PASS;
+        protected String auditZoneId;
         @Deprecated
         protected AuditClientType clientType;
         protected BasicAuditBuilder(){
         }
 
         public AuditConfiguration build(){
-            return new AuditConfiguration(null,null,null,ehubZoneId,ehubHost,ehubPort,bulkMode,tracingUrl,tracingToken,tracingInterval,auditServiceName, appName, auditServiceName,maxRetryCount,retryIntervalMillis,maxNumberOfEventsInCache,reconnectMode,traceEnabled,null,clientType, authenticationMethod);
+            return new AuditConfiguration(null,null,null,ehubZoneId,ehubHost,ehubPort,bulkMode,tracingUrl,tracingToken,tracingInterval,auditServiceName, cfAppName, spaceName,maxRetryCount,retryIntervalMillis,maxNumberOfEventsInCache,reconnectMode,traceEnabled,null,clientType, authenticationMethod, auditZoneId);
+        }
+
+        public BasicAuditBuilder ehubUrl(String ehubUrl) throws IllegalArgumentException {
+            if (ehubUrl != null) {
+                String[] eventHubHostandPort = ehubUrl.split(":");
+                if ( eventHubHostandPort.length != 2 ) {
+                    throw new IllegalArgumentException(String.format("ehuburl {%s} is invalid, ehuburl should have the following format: {host.domain:port}", ehubUrl));
+                }
+                this.ehubHost = eventHubHostandPort[0];
+                this.ehubPort = Integer.parseInt(eventHubHostandPort[1]);
+
+            }
+            return this;
         }
     }
 
+    @Accessors(chain = true, fluent = true) @Getter @Setter
     public static class AuditConfigurationWithAuthTokenBuilder extends BasicAuditBuilder {
 
         private String authToken;
-
-        public AuditConfigurationWithAuthTokenBuilder authToken(String authToken){
-            this.authToken = authToken;
-            return this;
-        }
 
         public AuditConfigurationWithAuthTokenBuilder ehubHost(String ehubHost){
             this.ehubHost = ehubHost;
@@ -167,8 +190,15 @@ public class AuditConfiguration {
             this.auditServiceName = auditServiceName;
             return this;
         }
-        public AuditConfigurationWithAuthTokenBuilder appName(String appName){
-            this.appName = appName;
+        @Deprecated
+        /**
+         * @deprecated  As of release 1.3.0, replaced by {@link #cfAppName(String)} ()}
+         */
+        public AuditConfigurationWithAuthTokenBuilder appName(String cfAppName){
+            return cfAppName(cfAppName);
+        }
+        public AuditConfigurationWithAuthTokenBuilder cfAppName(String cfAppName){
+            this.cfAppName = cfAppName;
             return this;
         }
         public AuditConfigurationWithAuthTokenBuilder spaceName(String spaceName){
@@ -205,6 +235,17 @@ public class AuditConfiguration {
             return this;
         }
 
+        public AuditConfigurationWithAuthTokenBuilder ehubUrl(String ehubUrl) {
+            super.ehubUrl(ehubUrl);
+            return this;
+        }
+
+        public AuditConfigurationWithAuthTokenBuilder auditZoneId(String auditZoneId) {
+            this.auditZoneId = auditZoneId;
+            return this;
+        }
+
+
         public AuditConfiguration build(){
             AuditConfiguration auditConfiguration = super.build();
             auditConfiguration.authToken = this.authToken;
@@ -214,26 +255,12 @@ public class AuditConfiguration {
         }
     }
 
+    @Accessors(chain = true, fluent = true) @Getter @Setter
     public static class AuditConfigurationBuilder extends  BasicAuditBuilder {
 
         private String uaaUrl;
         private String uaaClientId;
         private String uaaClientSecret;
-
-        public AuditConfigurationBuilder uaaUrl(String uaaUrl){
-            this.uaaUrl = uaaUrl;
-            return this;
-        }
-
-        public AuditConfigurationBuilder uaaClientId(String uaaClientId){
-            this.uaaClientId = uaaClientId;
-            return this;
-        }
-
-        public AuditConfigurationBuilder uaaClientSecret(String uaaClientSecret) {
-            this.uaaClientSecret = uaaClientSecret;
-            return this;
-        }
 
         public AuditConfigurationBuilder ehubHost(String ehubHost){
             this.ehubHost = ehubHost;
@@ -264,8 +291,15 @@ public class AuditConfiguration {
             this.auditServiceName = auditServiceName;
             return this;
         }
-        public AuditConfigurationBuilder appName(String appName){
-            this.appName = appName;
+        @Deprecated
+        /**
+         * @deprecated  As of release 1.3.0, replaced by {@link #cfAppName(String)} ()}
+         */
+        public AuditConfigurationBuilder appName(String cfAppName){
+            return cfAppName(cfAppName);
+        }
+        public AuditConfigurationBuilder cfAppName(String cfAppName){
+            this.cfAppName = cfAppName;
             return this;
         }
         public AuditConfigurationBuilder spaceName(String spaceName){
@@ -299,6 +333,16 @@ public class AuditConfiguration {
         @Deprecated
         public AuditConfigurationBuilder clientType(AuditClientType clientType){
             this.clientType = clientType;
+            return this;
+        }
+
+        public AuditConfigurationBuilder ehubUrl(String ehubUrl) {
+            super.ehubUrl(ehubUrl);
+            return this;
+        }
+
+        public AuditConfigurationBuilder auditZoneId(String auditZoneId) {
+            this.auditZoneId = auditZoneId;
             return this;
         }
 

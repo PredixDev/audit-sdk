@@ -17,7 +17,10 @@ public class MessageTest {
 
     private ObjectMapper om;
 
-    private final static String JSON = "{\"tenantUuid\":\"407a73d6-ec39-4ffb-aab3-689b99544957\"}";
+    private final static String JSON = "{\"messageId\":\"ab887c8f-2094-407a-88f7-8a686f41136c\"," +
+                                        "\"version\":2,\"timestamp\":1532590835791,\"classifier\":\"SUCCESS\"," +
+                                        "\"publisherType\":\"APP_SERVICE\",\"categoryType\":\"ADMINISTRATIONS\"," +
+                                        "\"eventType\":\"ACTION\"}";
 
     @Before
     public void setUp(){
@@ -26,8 +29,7 @@ public class MessageTest {
 
     @Test
     public void auditEventFromJsonTest() throws IOException {
-        Object o = om.readValue(JSON, AuditEventV1.class);
-        assertThat(om.readValue(JSON, AuditEventV1.class), is(notNullValue()));
-//        assertThat(om.readValue(JSON, AuditEventV2.class), is(notNullValue()));
+        Object o = om.readValue(JSON, AuditEventV2.class);
+        assertThat(om.readValue(JSON, AuditEventV2.class), is(notNullValue()));
     }
 }

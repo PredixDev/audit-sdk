@@ -1,14 +1,11 @@
 package com.ge.predix.audit.sdk;
 
-import com.ge.predix.audit.sdk.exception.UnmodifiableFieldException;
 import com.ge.predix.audit.sdk.message.AuditEvent;
-import com.ge.predix.audit.sdk.message.AuditEventV1;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**

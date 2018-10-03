@@ -1,24 +1,28 @@
 package com.ge.predix.audit.sdk;
 
+import com.ge.predix.audit.sdk.config.AbstractAuditConfiguration;
 import com.ge.predix.audit.sdk.config.AuditConfiguration;
+import com.ge.predix.audit.sdk.config.RoutingAuditConfiguration;
 import com.ge.predix.audit.sdk.config.vcap.VcapLoaderServiceImpl;
 import com.ge.predix.audit.sdk.exception.AuditException;
-import com.ge.predix.audit.sdk.exception.VcapLoadException;
+import com.ge.predix.audit.sdk.util.CustomLogger;
+import com.ge.predix.audit.sdk.util.LoggerUtils;
+import org.apache.http.client.utils.URIBuilder;
 
 import javax.validation.ConstraintViolation;
 import javax.validation.Validation;
 import javax.validation.Validator;
-import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Set;
-import java.util.logging.Logger;
+
+import static com.ge.predix.audit.sdk.util.ExceptionUtils.swallowException;
 
 /**
  * Created by 212582776 on 2/20/2018.
  */
 public class ConfigurationValidatorWithDeprecatedTypeSupport implements ConfigurationValidator {
 
-    private static Logger log = Logger.getLogger(ConfigurationValidatorWithDeprecatedTypeSupport.class.getName());
+    private static CustomLogger log = LoggerUtils.getLogger(ConfigurationValidatorWithDeprecatedTypeSupport.class.getName());
 
     //TODO add tests
     @Override
@@ -30,18 +34,25 @@ public class ConfigurationValidatorWithDeprecatedTypeSupport implements Configur
         verifyAppName(configuration);
         verifyTracingConfig(configuration);
         verifyParamsRanges(configuration);
-
-
     }
 
-    private void verifyAppName(AuditConfiguration configuration) {
-        if (configuration.getAppName() == null) {
-            try {
-                configuration.updateAppNameAndSpace(
-                        new VcapLoaderServiceImpl().getApplicationFromVcap());
-            } catch (VcapLoadException e) {
-                log.info("failed to read app name and space form vcap");
-            }
+    @Override
+    public void validateConfiguration( final RoutingAuditConfiguration routingAuditConfiguration) throws AuditException {
+            Set<ConstraintViolation<RoutingAuditConfiguration>> violations =
+                Validation.buildDefaultValidatorFactory().getValidator().validate(routingAuditConfiguration);
+        if ( !violations.isEmpty() ){
+            throw new AuditException(String.format("Invalid routing configuration: {%s}", violations));
+        }
+        verifyAppName(routingAuditConfiguration.getTenantAuditConfig());
+        validateTracingConfig(  routingAuditConfiguration.getTenantAuditConfig().getTracingInterval(),
+                routingAuditConfiguration.getSharedAuditConfig().getTracingUrl(),
+                routingAuditConfiguration.getTenantAuditConfig().isTraceEnabled());
+    }
+
+    private void verifyAppName(AbstractAuditConfiguration configuration) {
+        if (configuration.getCfAppName() == null) {
+            swallowException(()-> configuration.updateAppNameAndSpace(new VcapLoaderServiceImpl().getApplicationFromVcap()),
+                    "failed to read app name and space form vcap");
         }
     }
 
@@ -63,18 +74,19 @@ public class ConfigurationValidatorWithDeprecatedTypeSupport implements Configur
 
     private void verifyTracingConfig(AuditConfiguration configuration) throws AuditException {
         //verify tracing configuration
-        if(configuration.isTraceEnabled()) {
-            long tracingInterval = configuration.getTracingInterval();
-            String tracingUrl = configuration.getTracingUrl();
+        validateTracingConfig(configuration.getTracingInterval(), configuration.getTracingUrl(), configuration.isTraceEnabled());
+    }
+
+    private void validateTracingConfig(long tracingInterval, String tracingUrl, boolean enabled) throws AuditException {
+        if ( enabled ) {
             if (tracingInterval > 0 && tracingUrl != null && !tracingUrl.isEmpty()) {
                 try {
-                    URI uri  = new URI(tracingUrl);
+                    new URIBuilder(tracingUrl).build();
                 } catch (URISyntaxException e) {
-                    log.warning("tracing URL is invalid: "+tracingUrl);
+                    log.warning("tracing URL is invalid: " + tracingUrl);
                     throw new AuditException("tracing configuration is invalid");
                 }
-            }
-            else{
+            } else {
                 log.warning("tracing configuration is invalid");
                 throw new AuditException("tracing configuration is invalid");
             }

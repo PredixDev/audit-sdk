@@ -1,11 +1,5 @@
 package com.ge.predix.audit.sdk;
 
-import java.net.URISyntaxException;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.logging.Logger;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ge.predix.audit.sdk.config.AuditConfiguration;
@@ -13,35 +7,39 @@ import com.ge.predix.audit.sdk.exception.AuditException;
 import com.ge.predix.audit.sdk.exception.TracingException;
 import com.ge.predix.audit.sdk.message.AuditEvent;
 import com.ge.predix.audit.sdk.message.AuditTracingEvent;
-import com.ge.predix.audit.sdk.message.tracing.Checkpoint;
-import com.ge.predix.audit.sdk.message.tracing.LifeCycleEnum;
-import com.ge.predix.audit.sdk.message.tracing.TracingMessageSender;
-import com.ge.predix.audit.sdk.message.tracing.TracingMessageSenderImpl;
-import com.ge.predix.audit.sdk.message.tracing.TracingMetaData;
+import com.ge.predix.audit.sdk.message.tracing.*;
+import com.ge.predix.audit.sdk.util.CustomLogger;
+import com.ge.predix.audit.sdk.util.LoggerUtils;
 import com.ge.predix.eventhub.Ack;
 import com.ge.predix.eventhub.AckStatus;
 
-import lombok.Getter;
+import java.net.URISyntaxException;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.logging.Level;
 
 import static com.ge.predix.audit.sdk.AbstractAuditClientImpl.printAck;
+import static com.ge.predix.audit.sdk.util.LoggerUtils.generateLogPrefix;
 
 /**
  * Created by 212582776 on 2/11/2018.
  */
 public class TracingHandlerImpl implements TracingHandler {
 
-    @Getter
-    private static Logger log = Logger.getLogger(TracingHandlerImpl.class.getName());
+    private static CustomLogger log = LoggerUtils.getLogger(TracingHandlerImpl.class.getName());
     public final AuditConfiguration configuration;
     private TracingMessageSender tracingMessageSender;
     protected AtomicReference<AuditTracingEvent> auditTracingEvent = new AtomicReference<>();
     private ObjectMapper om;
+    private final String logPrefix;
 
     public TracingHandlerImpl(AuditConfiguration configuration) throws AuditException {
         this.configuration = configuration;
         this.tracingMessageSender  = buildTracingMessageSender();
         setAuditTracingEvent();
         om = new ObjectMapper();
+        this.logPrefix = generateLogPrefix(configuration.getAuditZoneId());
 
     }
 
@@ -62,7 +60,7 @@ public class TracingHandlerImpl implements TracingHandler {
 
     @Override
     public void sendCheckpoint(AuditEvent event, LifeCycleEnum lifeCycleStatus, String message) {
-        log.info("found tracing event. notifying LifeCycle FAIL");
+        log.logWithPrefix(Level.INFO, logPrefix, "found tracing event. notifying LifeCycle FAIL");
         Checkpoint messageToSend = buildTracingMessage(this.auditTracingEvent.get(), lifeCycleStatus, message);
         tracingMessageSender.sendTracingMessage(messageToSend);
     }
@@ -79,10 +77,10 @@ public class TracingHandlerImpl implements TracingHandler {
     public Optional<AuditTracingEvent> sendInitialCheckpoint() {
         try {
             getAuditTracingEvent().setMessageId(UUID.randomUUID().toString());
-            log.info("Starting tracing flow");
+            log.logWithPrefix(Level.INFO, logPrefix,  "Starting tracing flow");
             Checkpoint checkpoint = buildTracingMessage(this.auditTracingEvent.get(), LifeCycleEnum.START,"onSend");
             this.tracingMessageSender.sendTracingMessage(checkpoint);
-            log.info("calling Audit from tracing interval with event: " + auditTracingEvent.get());
+            log.logWithPrefix(Level.INFO, logPrefix, "calling Audit from tracing interval with event: %s" , auditTracingEvent.get());
         } catch (Exception e) {
             log.info(new TracingException(e).toString());
         }
@@ -107,14 +105,14 @@ public class TracingHandlerImpl implements TracingHandler {
                     configuration.getTracingUrl(),
                     configuration.getTracingToken());
         } catch (URISyntaxException e) {
-            log.warning("tracing URL is invalid: "+configuration.getTracingUrl());
+            log.logWithPrefix(Level.WARNING, logPrefix, "tracing URL {%s} is invalid", configuration.getTracingUrl());
             return null;
         }
         return tracingMessageSender;
     }
 
     protected Checkpoint buildTracingMessage(AuditTracingEvent auditTracingEvent, LifeCycleEnum lifeCycle, String customData) {
-        String appName = (configuration.getAppName() != null)? configuration.getAppName() : "";
+        String appName = (configuration.getCfAppName() != null)? configuration.getCfAppName() : "";
         String space = (configuration.getSpaceName() != null)? configuration.getSpaceName() : "";
         String auditName = (configuration.getAuditServiceName() != null)? configuration.getAuditServiceName() : "";
 

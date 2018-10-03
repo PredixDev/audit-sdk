@@ -1,20 +1,19 @@
 package com.ge.predix.audit.sdk;
 
-import java.util.List;
-import java.util.logging.Logger;
-
 import com.ge.predix.audit.sdk.config.AuditConfiguration;
 import com.ge.predix.audit.sdk.exception.AuditException;
 import com.ge.predix.audit.sdk.message.AuditEvent;
+import com.ge.predix.audit.sdk.util.CustomLogger;
 import com.ge.predix.audit.sdk.util.LoggerUtils;
 import com.ge.predix.eventhub.EventHubClientException;
-
 import lombok.AccessLevel;
 import lombok.Getter;
 
+import java.util.List;
+
 public class AuditClientSync {
 	
-	private static Logger log = Logger.getLogger(AuditClientSync.class.getName());
+	private static CustomLogger log = LoggerUtils.getLogger(AuditClientSync.class.getName());
 	
 	private final CommonClientInterface auditClientSyncImpl;
     private final DirectMemoryMonitor directMemoryMonitor;
@@ -31,7 +30,7 @@ public class AuditClientSync {
         ConfigurationValidator configurationValidator = ConfigurationValidatorFactory.getConfigurationValidator();
         configurationValidator.validateAuditConfiguration(configuration, AuditClientType.SYNC);
         auditConfiguration = AuditConfiguration.fromConfiguration(configuration);
-        directMemoryMonitor = new DirectMemoryMonitor();
+        directMemoryMonitor = DirectMemoryMonitor.getInstance();
         //because only prints in debug
         if(LoggerUtils.isDebugLogLevel()) {
             directMemoryMonitor.startMeasuringDirectMemory();

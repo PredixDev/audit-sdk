@@ -2,10 +2,10 @@ package com.ge.predix.audit.sdk;
 
 import static org.junit.Assert.*;
 
+import com.ge.predix.audit.sdk.message.AuditEventV2;
 import org.junit.Test;
 
 import com.ge.predix.audit.sdk.message.AuditEvent;
-import com.ge.predix.audit.sdk.message.AuditEventV1;
 
 public class AuditingResultContainerTest {
 	
@@ -21,7 +21,7 @@ public class AuditingResultContainerTest {
 	
 	@Test
 	public void onFailure_newFailedEvent() {
-		AuditEvent event = new AuditEventV1();
+		AuditEvent event = new AuditEventV2();
 		FailReport reason = FailReport.BAD_ACK;
 		String description = "bad ack";
 		
@@ -38,7 +38,7 @@ public class AuditingResultContainerTest {
 	
 	@Test
 	public void onFailure_failedEventAlreadyExists_reasonAndDescChange() {
-		AuditEvent event = new AuditEventV1();
+		AuditEvent event = new AuditEventV2();
 		FailReport reason = FailReport.BAD_ACK;
 		String description = "bad ack";
 		FailReport reason2 = FailReport.NO_ACK;
@@ -58,7 +58,7 @@ public class AuditingResultContainerTest {
 	
 	@Test
 	public void onSuccess_newSuccessEvent() {
-		AuditEvent event = new AuditEventV1();
+		AuditEvent event = new AuditEventV2();
 		
 		resultContainer.onSuccess(event);
 		
@@ -71,7 +71,7 @@ public class AuditingResultContainerTest {
 	
 	@Test
 	public void onSuccess_successReplacingFailed() {
-		AuditEvent event = new AuditEventV1();
+		AuditEvent event = new AuditEventV2();
 		FailReport reason = FailReport.BAD_ACK;
 		String description = "bad ack";
 		

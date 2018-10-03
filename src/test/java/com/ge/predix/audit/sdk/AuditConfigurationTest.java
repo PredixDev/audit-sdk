@@ -5,8 +5,7 @@ import com.ge.predix.audit.sdk.config.ReconnectMode;
 import org.junit.Test;
 
 import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertThat;
+import static org.junit.Assert.*;
 
 /**
  * Created by 212584872 on 1/23/2017.
@@ -73,5 +72,39 @@ public class AuditConfigurationTest {
         assertNull(config.getUaaClientId());
         assertNull(config.getUaaClientSecret());
         assertThat(config.getAuthToken(),is("authToken"));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testAuthTokenConfigurationBuilderWithBadEventhubUrl(){
+        AuditConfiguration config = AuditConfiguration.builderWithAuthToken()
+                .ehubUrl("1")
+                .build();
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testConfigurationWithBadEventhubUrl(){
+        AuditConfiguration config = AuditConfiguration.builder()
+                .ehubUrl("1")
+                .build();
+    }
+
+    @Test
+    public void testConfigurationWithoutEhubUrl(){
+        AuditConfiguration config = AuditConfiguration.builder()
+                .ehubUrl(null)
+                .build();
+
+        assertNull(config.getEhubHost());
+        assertEquals(0, config.getEhubPort());
+    }
+
+    @Test
+    public void testConfigurationWithEventhubUrl(){
+        AuditConfiguration config = AuditConfiguration.builder()
+                .ehubUrl("a:123")
+                .build();
+
+        assertEquals(123, config.getEhubPort());
+        assertEquals("a", config.getEhubHost());
     }
 }

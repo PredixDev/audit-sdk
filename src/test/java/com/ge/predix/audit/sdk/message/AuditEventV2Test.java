@@ -20,12 +20,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 /**
  * Created by 212584872 on 1/9/2017.
  */
-@RunWith(PowerMockRunner.class)
-@PrepareForTest({EnvUtils.class })
-public class AuditEventV2Test {
 
-    public static final String MY_APP_NAME = "MY_APP_NAME";
-    public static final String NEW_NAME = "new name";
+public class AuditEventV2Test {
 
     Logger log = Logger.getLogger(AuditEventV2Test.class.getName());
 
@@ -35,11 +31,6 @@ public class AuditEventV2Test {
     private static final String CORRELATION_ID = UUID.nameUUIDFromBytes(
             "CORRELATION_ID".getBytes(Charset.defaultCharset())).toString();
 
-    @Before
-    public void init(){
-        PowerMockito.mockStatic(System.class);
-        PowerMockito.when(System.getenv(EnvUtils.APPLICATION_NAME)).thenReturn(MY_APP_NAME);
-    }
 
     @Test
     public void auditMessagesDiffTest() throws InterruptedException {
@@ -244,7 +235,6 @@ public class AuditEventV2Test {
         AuditEnums.EventType.CUSTOM,
         null,
         null,
-        null,
         null);
     }
 
@@ -257,7 +247,6 @@ public class AuditEventV2Test {
                 null,
                 AuditEnums.CategoryType.API_CALLS,
                 AuditEnums.EventType.CUSTOM,
-                null,
                 null,
                 null,
                 null);
@@ -274,7 +263,6 @@ public class AuditEventV2Test {
                 AuditEnums.EventType.CUSTOM,
                 null,
                 null,
-                null,
                 null);
     }
 
@@ -289,7 +277,6 @@ public class AuditEventV2Test {
                 null,
                 null,
                 null,
-                null,
                 null);
     }
 
@@ -301,7 +288,6 @@ public class AuditEventV2Test {
                 AuditEnums.Classifier.FAILURE,
                 AuditEnums.PublisherType.OS,
                 AuditEnums.CategoryType.API_CALLS,
-                null,
                 null,
                 null,
                 null,
@@ -321,35 +307,9 @@ public class AuditEventV2Test {
                 AuditEnums.EventType.CUSTOM,
                 null,
                 null,
-                null,
                 null);
 
         assertThat(eventV2.getMessageId()!= null,is(true));
-    }
-
-
-    @Test
-    public void auditMessageBuilderTestWithAppName_appNameInEnv_messageContainsName(){
-                AuditEventV2 event1 = AuditEventV2.builder()
-                .publisherType(AuditEnums.PublisherType.APP_SERVICE)
-                .categoryType(AuditEnums.CategoryType.API_CALLS)
-                .eventType(AuditEnums.EventType.FAILURE_API_REQUEST)
-                .payload("GET v2/apps T.O")
-                .build();
-
-        assertThat(event1.getAppName(),is(MY_APP_NAME));
-    }
-
-    @Test
-    public void auditMessageBuilderTestWithAppName_appNameBuilderAndEnv_messageContainsBuilderName(){
-        AuditEventV2 event1 = AuditEventV2.builder()
-                .publisherType(AuditEnums.PublisherType.APP_SERVICE)
-                .categoryType(AuditEnums.CategoryType.API_CALLS)
-                .eventType(AuditEnums.EventType.FAILURE_API_REQUEST)
-                .payload("GET v2/apps T.O")
-                .appName(NEW_NAME)
-                .build();
-        assertThat(event1.getAppName(),is(NEW_NAME));
     }
 
 }

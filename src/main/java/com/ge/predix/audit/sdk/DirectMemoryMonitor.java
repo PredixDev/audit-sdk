@@ -1,25 +1,30 @@
 package com.ge.predix.audit.sdk;
 
+import com.ge.predix.audit.sdk.util.CustomLogger;
+import com.ge.predix.audit.sdk.util.LoggerUtils;
 import io.netty.util.internal.PlatformDependent;
-import lombok.Getter;
 
 import java.lang.reflect.Field;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.LongSupplier;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * Created by 212582776 on 2/13/2018.
  */
 public class DirectMemoryMonitor {
 
-	@Getter
-	private static Logger log = Logger.getLogger(DirectMemoryMonitor.class.getName());
+    private static CustomLogger log = LoggerUtils.getLogger(DirectMemoryMonitor.class.getName());
+
+    private static class DirectMemoryMonitorHolder {
+        private final static DirectMemoryMonitor INSTANCE = new DirectMemoryMonitor();
+    }
+
+    public static DirectMemoryMonitor getInstance() {
+        return DirectMemoryMonitorHolder.INSTANCE;
+    }
 
     private static final String IO_NETTY_MAX_DIRECT_MEMORY_PATH = "io.netty.maxDirectMemory";
     private static final String MAX_DIRECT_MEMORY_SIZE_STR = "MAX_DIRECT_MEMORY_SIZE";
@@ -29,24 +34,32 @@ public class DirectMemoryMonitor {
 
     private LongSupplier directMemoryCounter = null;
     private ScheduledExecutorService executorService;
+    private boolean initialized = false;
 
-    public DirectMemoryMonitor(){
+    private DirectMemoryMonitor(){
         setMaxDirectMemory();
     }
 
-    public void startMeasuringDirectMemory() {
+    public synchronized void startMeasuringDirectMemory() {
          try {
-            directMemoryCounter = initDirectMemoryCounter();
-             executorService = Executors.newScheduledThreadPool(1);
-             executorService.scheduleAtFixedRate(this::printDirectMemoryCount, 1, 10, TimeUnit.SECONDS);
+             if (!initialized) {
+                 initialized = true;
+                 directMemoryCounter = initDirectMemoryCounter();
+                 executorService = Executors.newSingleThreadScheduledExecutor();
+                 executorService.scheduleAtFixedRate(this::printDirectMemoryCount, 1, 10, TimeUnit.SECONDS);
+             }
+             else {
+                log.warning("Direct memory monitor was already initialized.");
+             }
         } catch (NoSuchFieldException | IllegalAccessException e) {
-            throw new RuntimeException("Exception", e);
+            throw new RuntimeException("Failed to initialize direct memory monitor", e);
         }
     }
 
-    public void shutdown(){
+    public synchronized void shutdown(){
         try {
             executorService.shutdownNow();
+            initialized = false;
         } catch (Exception e) {
             log.info("failed to shutdown DirectMemoryMonitor");
         }
@@ -71,7 +84,7 @@ public class DirectMemoryMonitor {
         try {
             verifyMaxMemorySet(MAX_DIRECT_MEMORY_SIZE * MEGABYTE);
         } catch (NoSuchFieldException | IllegalAccessException | AssertionError e) {
-            log.log(Level.SEVERE, "Failed to verify max memory set", e);
+            log.severe("Failed to verify max memory set", e);
         }
     }
 

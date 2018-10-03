@@ -1,5 +1,7 @@
 package com.ge.predix.audit.sdk.message;
 
+import io.netty.util.internal.StringUtil;
+
 import java.io.Serializable;
 
 /**
@@ -11,4 +13,7 @@ public interface AuditEvent extends Serializable, Cloneable {
     String getMessageId();
     String getTenantUuid();
     AuditEvent clone();
+    default boolean hasTenantUuid() {
+        return !StringUtil.isNullOrEmpty(this.getTenantUuid());
+    }
 }

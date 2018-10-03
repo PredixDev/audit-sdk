@@ -3,6 +3,8 @@ package com.ge.predix.audit.sdk;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ge.predix.audit.sdk.config.AuditConfiguration;
 import com.ge.predix.audit.sdk.exception.AuditException;
+import com.ge.predix.audit.sdk.util.CustomLogger;
+import com.ge.predix.audit.sdk.util.LoggerUtils;
 import com.ge.predix.audit.sdk.validator.ValidatorService;
 import com.ge.predix.audit.sdk.validator.ValidatorServiceImpl;
 import com.ge.predix.eventhub.Ack;
@@ -19,13 +21,15 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Logger;
+import java.util.logging.Level;
+
+import static com.ge.predix.audit.sdk.util.LoggerUtils.generateLogPrefix;
 
 public abstract class AbstractAuditClientImpl implements CommonClientInterface {
 
 	public static final String NO_ACK_WAS_RECEIVED = "No ACK was received";
-	@Getter
-	private static Logger log = Logger.getLogger(AbstractAuditClientImpl.class.getName());
+
+	private static CustomLogger log = LoggerUtils.getLogger(AbstractAuditClientImpl.class.getName());
 
 	protected final AuditConfiguration configuration;
 
@@ -57,6 +61,8 @@ public abstract class AbstractAuditClientImpl implements CommonClientInterface {
 	@Getter(AccessLevel.PACKAGE)
 	protected ReconnectStrategy reconnectEngine;
 
+	protected String logPrefix;
+
 	@Getter
 	protected volatile AuditCommonClientState auditCommonClientState = AuditCommonClientState.NOT_INIT;
 
@@ -79,6 +85,7 @@ public abstract class AbstractAuditClientImpl implements CommonClientInterface {
 			tracingExecutor = Executors.newScheduledThreadPool(1);
 			startTracingRepetitive();
 		}
+		this.logPrefix = generateLogPrefix(configuration.getAuditZoneId());
 	}
 
 	/**
@@ -89,10 +96,10 @@ public abstract class AbstractAuditClientImpl implements CommonClientInterface {
 	public synchronized void reconnect() throws EventHubClientException {
 		throwIfShutdown();
 		setStateAndNotify(AuditCommonClientState.CONNECTING);
-		log.warning("reconnecting audit client");
+		log.logWithPrefix(Level.WARNING,logPrefix,"reconnecting audit client");
 		client.reconnect();
 		setStateAndNotify(AuditCommonClientState.CONNECTED);
-		log.warning("audit client is up and running");
+		log.logWithPrefix(Level.WARNING,logPrefix, "audit client is up and running");
 	}
 
 
@@ -145,14 +152,14 @@ public abstract class AbstractAuditClientImpl implements CommonClientInterface {
 
 	protected void throwIfShutdown() {
 		if(auditCommonClientState == AuditCommonClientState.SHUTDOWN){
-			throw new IllegalStateException("Illegal operation - client was shutdown.");
+			throw new IllegalStateException(String.format(logPrefix, "Illegal operation - client was shutdown."));
 		}
 	}
 
 	protected Client buildClient(AuditConfiguration auditConfiguration, PublishConfiguration publishConfiguration)
 			throws EventHubClientException {
 		auditCommonClientState = AuditCommonClientState.CONNECTING;
-		log.warning("building EventHub client with audit configuration: " + auditConfiguration);
+		log.logWithPrefix(Level.WARNING, logPrefix,"building EventHub client with audit configuration: %s",auditConfiguration);
 		EventHubConfiguration configuration = new EventHubConfiguration.Builder()
 				.host(auditConfiguration.getEhubHost())
 				.port(auditConfiguration.getEhubPort())
@@ -173,7 +180,7 @@ public abstract class AbstractAuditClientImpl implements CommonClientInterface {
 
 	protected void setStateAndNotify(AuditCommonClientState state) {
 		if(auditCommonClientState == AuditCommonClientState.SHUTDOWN){
-			log.warning("client is already shutdown, state was not set.");
+			log.logWithPrefix(Level.WARNING, logPrefix, "client is already shutdown, state was not set.");
 			return;
 		}
 		auditCommonClientState = state;

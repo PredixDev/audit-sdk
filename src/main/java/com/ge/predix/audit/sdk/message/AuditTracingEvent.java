@@ -13,7 +13,7 @@ import java.util.UUID;
  */
 
 @Data
-public class AuditTracingEvent implements AuditEvent {
+public class AuditTracingEvent implements AuditEventExtended {
 
     private static final int VERSION = -1;
     @Uuid

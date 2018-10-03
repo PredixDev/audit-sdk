@@ -201,6 +201,7 @@ public class AuditClientTest {
                 .ehubZoneId("zoneId")
                 .authToken("token")
                 .tracingInterval(0)
+                .traceEnabled(true)
                 .tracingUrl("http://localhost:443/tracing")
                 .tracingToken("token")
                 .bulkMode(false)
@@ -215,8 +216,9 @@ public class AuditClientTest {
                 .ehubPort(443)
                 .ehubZoneId("zoneId")
                 .authToken("token")
-                .tracingInterval(0)
+                .tracingInterval(10000)
                 .tracingUrl("")
+                .traceEnabled(true)
                 .tracingToken("token")
                 .bulkMode(false)
                 .build();

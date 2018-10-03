@@ -19,15 +19,14 @@ import static org.hamcrest.MatcherAssert.assertThat;
 @PrepareForTest( { EnvUtils.class })
 public class EnvUtilsTest {
 
-    public static final String MY_ENV = "my_env";
-    public static final String MY_VALUE = "my_value";
-    public static final String BAD_VAR = "BAD_VAR";
+    private static final String MY_ENV = "my_env";
+    private static final String MY_VALUE = "my_value";
+    private static final String BAD_VAR = "BAD_VAR";
 
     @Before
-    public void init(){
-        EnvUtils.clear();
+    public void init() {
+        EnvUtils.variables.clear();
     }
-
 
     @Test
     public void testEnvIsNull(){
@@ -41,6 +40,28 @@ public class EnvUtilsTest {
         PowerMockito.mockStatic(System.class);
         PowerMockito.when(System.getenv(MY_ENV)).thenReturn(MY_VALUE);
         assertThat(EnvUtils.getEnvironmentVar(MY_ENV), is(MY_VALUE));
+    }
+
+    @Test
+    public void mapExistingEnvironmentVarEnvIsNull(){
+        Integer nullInt = EnvUtils.mapExistingEnvironmentVar(BAD_VAR, Integer::valueOf);
+
+        assertNull(nullInt);
+        assertThat(EnvUtils.variables.size(),is(1));
+        assertTrue(EnvUtils.variables.containsKey(BAD_VAR));
+    }
+
+    @Test
+    public void mapExistingEnvarionmentVarMockEnv_valueIsReturned(){
+        PowerMockito.mockStatic(System.class);
+        String fiveAsStr = "5";
+
+        PowerMockito.when(System.getenv(MY_ENV)).thenReturn(fiveAsStr);
+
+        Integer five = EnvUtils.mapExistingEnvironmentVar(MY_ENV , Integer::valueOf);
+
+        assertThat(five, is(5));
+        assertThat(EnvUtils.getEnvironmentVar(MY_ENV), is(fiveAsStr));
     }
 
 }

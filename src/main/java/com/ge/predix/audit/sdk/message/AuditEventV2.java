@@ -2,7 +2,6 @@ package com.ge.predix.audit.sdk.message;
 
 
 import com.ge.predix.audit.sdk.message.validator.Uuid;
-import com.ge.predix.audit.sdk.util.EnvUtils;
 import lombok.*;
 import org.hibernate.validator.constraints.Length;
 
@@ -21,8 +20,6 @@ import java.util.UUID;
 @ToString
 @EqualsAndHashCode
 public class AuditEventV2 implements AuditEvent {
-
-    private static final String APPLICATION_NAME = EnvUtils.getEnvironmentVar(EnvUtils.APPLICATION_NAME);
 
     private static final int VERSION_2 = 2;
 
@@ -56,11 +53,10 @@ public class AuditEventV2 implements AuditEvent {
     @Length(max = 36, message = "The field must be maximum 36 characters")
     private String tenantUuid;
 
-    @Length(max = 100, message = "The field must be maximum 100 characters")
-    private String appName;
 
-    @ConstructorProperties({"messageId", "version", "timestamp", "classifier", "publisherType", "categoryType", "eventType", "payload", "correlationId", "tenantUuid", "appName"})
-    public AuditEventV2(String messageId, int version, long timestamp, @NotNull AuditEnums.Classifier classifier, @NotNull AuditEnums.PublisherType publisherType, @NotNull AuditEnums.CategoryType categoryType, @NotNull AuditEnums.EventType eventType, String payload, String correlationId, String tenantUuid, String appName) {
+
+    @ConstructorProperties({"messageId", "version", "timestamp", "classifier", "publisherType", "categoryType", "eventType", "payload", "correlationId", "tenantUuid"})
+    public AuditEventV2(String messageId, int version, long timestamp, @NotNull AuditEnums.Classifier classifier, @NotNull AuditEnums.PublisherType publisherType, @NotNull AuditEnums.CategoryType categoryType, @NotNull AuditEnums.EventType eventType, String payload, String correlationId, String tenantUuid) {
         if (classifier == null) {
             throw new NullPointerException("classifier");
         } else if (publisherType == null) {
@@ -89,12 +85,11 @@ public class AuditEventV2 implements AuditEvent {
             this.payload = payload;
             this.correlationId = correlationId;
             this.tenantUuid = tenantUuid;
-            this.appName = appName;
         }
     }
 
     @Override
-    public AuditEvent clone() {
+    public AuditEventV2 clone() {
         return AuditEventV2.builder()
                 .version(VERSION_2)
                 .messageId(messageId)
@@ -106,7 +101,6 @@ public class AuditEventV2 implements AuditEvent {
                 .payload(payload)
                 .correlationId(correlationId)
                 .tenantUuid(tenantUuid)
-                .appName(appName)
                 .build();
     }
 
@@ -115,6 +109,5 @@ public class AuditEventV2 implements AuditEvent {
         private long timestamp = System.currentTimeMillis();
         private String messageId = UUID.randomUUID().toString();
         private AuditEnums.Classifier classifier = AuditEnums.Classifier.SUCCESS;
-        private String appName = APPLICATION_NAME;
     }
 }

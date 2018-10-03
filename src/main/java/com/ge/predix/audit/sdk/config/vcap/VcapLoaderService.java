@@ -2,6 +2,7 @@ package com.ge.predix.audit.sdk.config.vcap;
 
 
 import com.ge.predix.audit.sdk.config.AuditConfiguration;
+import com.ge.predix.audit.sdk.config.RoutingAuditConfiguration;
 import com.ge.predix.audit.sdk.exception.VcapLoadException;
 
 /**
@@ -11,5 +12,6 @@ public interface VcapLoaderService {
     VcapServices getVcapServices();
     VcapApplication getVcapApplication();
     AuditConfiguration getConfigFromVcap() throws VcapLoadException;
+    RoutingAuditConfiguration getRoutingConfigFromVcap() throws VcapLoadException;
     VcapApplication getApplicationFromVcap() throws VcapLoadException;
 }

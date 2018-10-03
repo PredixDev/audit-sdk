@@ -6,7 +6,6 @@ import com.ge.predix.audit.sdk.config.ReconnectMode;
 import com.ge.predix.audit.sdk.exception.AuditException;
 import com.ge.predix.audit.sdk.message.AuditEnums;
 import com.ge.predix.audit.sdk.message.AuditEvent;
-import com.ge.predix.audit.sdk.message.AuditEventV1;
 import com.ge.predix.audit.sdk.message.AuditEventV2;
 import com.ge.predix.audit.sdk.message.tracing.TracingMessageSender;
 import com.ge.predix.audit.sdk.message.tracing.TracingMessageSenderImpl;
@@ -33,7 +32,9 @@ import static com.ge.predix.audit.sdk.AuditClientAsyncImpl.NO_ACK_WAS_RECEIVED;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.*;
 
 @Ignore
@@ -52,7 +53,8 @@ public class AuditClientAsyncImplTest {
     String id_1 = "1";
     String id_2 = "2";
     String id_3 = "3";
-    AuditEvent auditEvent_1 = AuditEventV2.builder()
+    String id_4 = "4";
+    AuditEventV2 auditEvent_1 = AuditEventV2.builder()
             .messageId(id_1)
             .categoryType(AuditEnums.CategoryType.ADMINISTRATIONS)
             .eventType(AuditEnums.EventType.STARTUP_EVENT)
@@ -71,6 +73,13 @@ public class AuditClientAsyncImplTest {
             .categoryType(AuditEnums.CategoryType.ADMINISTRATIONS)
             .eventType(AuditEnums.EventType.STARTUP_EVENT)
             .classifier(AuditEnums.Classifier.FAILURE)
+            .publisherType(AuditEnums.PublisherType.APP_SERVICE)
+            .build();
+    AuditEventV2 auditEvent_4 = AuditEventV2.builder()
+            .messageId(id_4)
+            .categoryType(AuditEnums.CategoryType.ADMINISTRATIONS)
+            .eventType(AuditEnums.EventType.STARTUP_EVENT)
+            .classifier(AuditEnums.Classifier.SUCCESS)
             .publisherType(AuditEnums.PublisherType.APP_SERVICE)
             .build();
     EventContainer eventContainer_1 = new EventContainer(auditEvent_1);
@@ -583,14 +592,16 @@ public class AuditClientAsyncImplTest {
         List<Ack> acks = Lists.newArrayList();
 
         for (int i = 0; i < numberOfEvents; i++) {
-            AuditEvent successEvent = AuditEventV1.builder().messageId(String.valueOf(i)).build();
+            AuditEvent successEvent = auditEvent_4.clone();
+            successEvent.setMessageId(String.valueOf(i));
             EventContainer successEventContainer = EventContainer.builder().auditEvent(successEvent).build();
             QueueElement successElement = QueueElement.builder().messageId(String.valueOf(i)).build();
             auditClientAsyncImpl.getEventMap().put(String.valueOf(i), successEventContainer);
             auditClientAsyncImpl.getEventQueue().offer(successElement);
             acks.add(Ack.newBuilder().setId(successEvent.getMessageId()).setStatusCode(AckStatus.ACCEPTED).build());
             i++;
-            AuditEvent failEvent = AuditEventV1.builder().messageId(String.valueOf(i)).build();
+            AuditEvent failEvent = auditEvent_1.clone();
+            failEvent.setMessageId(String.valueOf(i));
             EventContainer failEventContainer = EventContainer.builder().auditEvent(failEvent).build();
             QueueElement failElement = QueueElement.builder().messageId(String.valueOf(i)).build();
             auditClientAsyncImpl.getEventMap().put(String.valueOf(i), failEventContainer);
@@ -635,11 +646,7 @@ public class AuditClientAsyncImplTest {
                             .builder()
                             .numberOfRetriesMade(new AtomicInteger(2))
                             .auditEvent(
-                                    AuditEventV1
-                                            .builder()
-                                            .timestamp(i)
-                                            .messageId("" + i)
-                                            .build())
+                                    cloneAndUpdateindexes(auditEvent_4, i))
                             .build());
             auditClientAsyncImpl.getEventQueue().offer(QueueElement.builder().messageId("" + i).timestamp(i).build());
         }
@@ -670,11 +677,7 @@ public class AuditClientAsyncImplTest {
                             .builder()
                             .numberOfRetriesMade(new AtomicInteger(1))
                             .auditEvent(
-                                    AuditEventV1
-                                            .builder()
-                                            .timestamp(i)
-                                            .messageId("" + i)
-                                            .build())
+                                    cloneAndUpdateindexes(auditEvent_4, i))
                             .build());
             auditClientAsyncImpl.getEventQueue().offer(QueueElement.builder().messageId("" + i).timestamp(i).build());
         }
@@ -758,8 +761,113 @@ public class AuditClientAsyncImplTest {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        verify(client, times(2)).flush();
+        verify(client, atLeast(2)).flush();
+        verify(client, atMost(3)).flush();
         assertThat(auditClientAsyncImpl.getEventMap().size(), is(1));
+    }
+
+    @Test
+    public void shutdown_noEvents_clientIsShutdown() throws AuditException, EventHubClientException {
+        TestHelper cb = spy(new TestHelper());
+        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration));
+        Client client = mock(Client.class);
+        ValidatorService validatorService = mock(ValidatorService.class);
+        auditClientAsyncImpl.setClient(client);
+        auditClientAsyncImpl.setValidatorService(validatorService);
+
+
+        auditClientAsyncImpl.shutdown();
+
+        assertEquals(AuditClientState.SHUTDOWN, auditClientAsyncImpl.getAuditClientState());
+        assertTrue(auditClientAsyncImpl.getRetryExecutorService().isShutdown());
+        verifyZeroInteractions(cb);
+    }
+
+    @Test
+    public void shutdown_eventMapNotEmpty_onFailureIsTriggered() throws AuditException, EventHubClientException {
+        TestHelper cb = spy(new TestHelper());
+        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration));
+        Client client = mock(Client.class);
+        ValidatorService validatorService = mock(ValidatorService.class);
+        auditClientAsyncImpl.setClient(client);
+        auditClientAsyncImpl.setValidatorService(validatorService);
+        auditClientAsyncImpl.getEventMap().put(id_1, new EventContainer(auditEvent_1));
+
+
+        auditClientAsyncImpl.shutdown();
+
+        assertEquals(AuditClientState.SHUTDOWN, auditClientAsyncImpl.getAuditClientState());
+        assertTrue(auditClientAsyncImpl.getRetryExecutorService().isShutdown());
+        assertThat(cb.lastFailureCode, is(FailReport.NO_MORE_RETRY));
+        assertThat(cb.lastFailureEvent, is(auditEvent_1));
+    }
+
+    @Test
+    public void graceful_noEvents_clientIsShutdown() throws AuditException, EventHubClientException {
+        TestHelper cb = spy(new TestHelper());
+        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration));
+        Client client = mock(Client.class);
+        auditClientAsyncImpl.setClient(client);
+
+        auditClientAsyncImpl.gracefulShutdown();
+
+        assertEquals(AuditClientState.SHUTDOWN, auditClientAsyncImpl.getAuditClientState());
+        assertTrue(auditClientAsyncImpl.getRetryExecutorService().isShutdown());
+        verifyZeroInteractions(cb);
+    }
+
+    @Test
+    public void graceful_eventMapNotEmpty_onFailureIsTriggered() throws AuditException, EventHubClientException {
+        TestHelper cb = spy(new TestHelper());
+        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration));
+        Client client = mock(Client.class);
+        auditClientAsyncImpl.setClient(client);
+        auditClientAsyncImpl.getEventMap().put(id_1, new EventContainer(auditEvent_1));
+        long start = System.currentTimeMillis();
+
+        auditClientAsyncImpl.gracefulShutdown();
+        long end = System.currentTimeMillis();
+
+        long diff = end-start;
+        assertTrue(diff >= auditClientAsyncImpl.noAckLimit * (auditClientAsyncImpl.retryCount +1 ) );
+        assertTrue(diff < auditClientAsyncImpl.noAckLimit * (auditClientAsyncImpl.retryCount +3 ) );
+        assertEquals(AuditClientState.SHUTDOWN, auditClientAsyncImpl.getAuditClientState());
+        assertTrue(auditClientAsyncImpl.getRetryExecutorService().isShutdown());
+        assertThat(cb.lastFailureCode, is(FailReport.NO_MORE_RETRY));
+        assertThat(cb.lastFailureEvent, is(auditEvent_1));
+    }
+
+    @Test
+    public void graceful_eventBecomeEmpty_onFailureIsNotTriggered() throws AuditException, EventHubClientException {
+        TestHelper cb = spy(new TestHelper());
+        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration));
+        Client client = mock(Client.class);
+        auditClientAsyncImpl.setClient(client);
+        when(client.flush())
+                .thenAnswer((c) -> {
+                    auditClientAsyncImpl.handleEventHubCallback()
+                            .onAck(Collections.singletonList(Ack.newBuilder()
+                                    .setId(id_1)
+                                    .setStatusCode(AckStatus.ACCEPTED)
+                                    .build()));
+                    return null;
+                })
+                .thenReturn(new ArrayList<>());
+        auditClientAsyncImpl.getEventMap().put(id_1, new EventContainer(auditEvent_1));
+        auditClientAsyncImpl.getEventQueue().add(new QueueElement(auditEvent_1.getMessageId(), auditEvent_1.getTimestamp()));
+
+        long start = System.currentTimeMillis();
+        auditClientAsyncImpl.gracefulShutdown();
+        long end = System.currentTimeMillis();
+
+        long diff = end-start;
+        assertTrue(diff >= auditClientAsyncImpl.noAckLimit );
+        assertTrue(diff < auditClientAsyncImpl.noAckLimit * (auditClientAsyncImpl.retryCount +1 ));
+        assertEquals(AuditClientState.SHUTDOWN, auditClientAsyncImpl.getAuditClientState());
+        assertTrue(auditClientAsyncImpl.getRetryExecutorService().isShutdown());
+        assertThat(cb.lastSuccessEvent.getMessageId(), is(auditEvent_1.getMessageId()));
+        assertThat(cb.getSuccessCount(), is(1));
+        assertTrue(auditClientAsyncImpl.getEventMap().isEmpty());
     }
 
     @Test
@@ -824,4 +932,12 @@ public class AuditClientAsyncImplTest {
         verify(client, atLeast(i-2)).reconnect();
         verify(client, atMost(i+2)).reconnect();
     }
+
+    private AuditEventV2 cloneAndUpdateindexes(AuditEventV2 auditEvent, int i){
+        AuditEventV2 cloned = auditEvent.clone();
+        cloned.setMessageId(String.valueOf(i));
+        cloned.setTimestamp(i);
+        return cloned;
+    }
+
 }

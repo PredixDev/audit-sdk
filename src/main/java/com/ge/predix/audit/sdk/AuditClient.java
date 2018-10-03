@@ -1,25 +1,23 @@
 package com.ge.predix.audit.sdk;
 
-import java.util.List;
-import java.util.logging.Logger;
-
 import com.ge.predix.audit.sdk.config.AuditConfiguration;
 import com.ge.predix.audit.sdk.exception.AuditException;
 import com.ge.predix.audit.sdk.message.AuditEvent;
+import com.ge.predix.audit.sdk.util.CustomLogger;
 import com.ge.predix.audit.sdk.util.LoggerUtils;
 import com.ge.predix.eventhub.EventHubClientException;
-
 import lombok.AccessLevel;
 import lombok.Getter;
+
+import java.util.List;
 
 /**
  * Created by Martin Saad on 2/12/2017.
  */
 public class AuditClient {
-    private static Logger log = Logger.getLogger(AuditClient.class.getName());
+    private static CustomLogger log = LoggerUtils.getLogger(AuditClient.class.getName());
 
     private final CommonClientInterface auditClientAsyncImpl;
-    private final DirectMemoryMonitor directMemoryMonitor;
     @Getter(AccessLevel.PACKAGE)
     private final AuditConfiguration auditConfiguration;
 
@@ -36,7 +34,7 @@ public class AuditClient {
         ConfigurationValidator configurationValidator = ConfigurationValidatorFactory.getConfigurationValidator();
         configurationValidator.validateAuditConfiguration(configuration, AuditClientType.ASYNC);
         this.auditConfiguration = AuditConfiguration.fromConfiguration(configuration);
-        directMemoryMonitor = new DirectMemoryMonitor();
+        DirectMemoryMonitor directMemoryMonitor = DirectMemoryMonitor.getInstance();
         //because only prints in debug
         if(LoggerUtils.isDebugLogLevel()) {
             directMemoryMonitor.startMeasuringDirectMemory();
@@ -98,7 +96,7 @@ public class AuditClient {
      */
     public void shutdown() throws EventHubClientException {
         auditClientAsyncImpl.shutdown();
-        directMemoryMonitor.shutdown();
+        DirectMemoryMonitor.getInstance().shutdown();
     }
 
     /**

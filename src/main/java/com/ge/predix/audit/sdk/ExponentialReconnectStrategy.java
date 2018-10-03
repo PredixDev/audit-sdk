@@ -1,18 +1,21 @@
 package com.ge.predix.audit.sdk;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import com.ge.predix.audit.sdk.util.CustomLogger;
+import com.ge.predix.audit.sdk.util.LoggerUtils;
 
-import java.util.concurrent.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Level;
 
 /**
  * Created by 212582776 on 2/15/2018.
  */
 public class ExponentialReconnectStrategy implements ReconnectStrategy {
     //TODO  add connected state tests
-    private static Log log = LogFactory.getLog(ExponentialReconnectStrategy.class);
+    private static CustomLogger log = LoggerUtils.getLogger(ExponentialReconnectStrategy.class.getName());
 
     /* Will try to reconnect for about 5 minutes  in a backoff delay manner.
     * After which if still unsuccessful, will try to reconnect every 5 minutes indefinitely.
@@ -25,9 +28,10 @@ public class ExponentialReconnectStrategy implements ReconnectStrategy {
     private volatile AtomicInteger curIndex;
     private volatile AtomicBoolean isBetweenIntervals;
     private volatile AtomicBoolean shouldReconnectNextInterval;
-    private volatile AuditCommonClientState auditCommonClientState;
+    private final String logPrefix;
 
-    public ExponentialReconnectStrategy(Runnable actionToPerform) {
+    public ExponentialReconnectStrategy(Runnable actionToPerform, String logPrefix) {
+        this.logPrefix = logPrefix;
         threadExecutor = Executors.newSingleThreadScheduledExecutor();
         curIndex = new AtomicInteger(0);
         this.actionToPerform = actionToPerform;
@@ -37,7 +41,6 @@ public class ExponentialReconnectStrategy implements ReconnectStrategy {
 
     @Override
     public synchronized void notifyStateChanged(AuditCommonClientState auditCommonClientState)  {
-        this.auditCommonClientState = auditCommonClientState;
         switch (auditCommonClientState){
             case DISCONNECTED:{
                 if (!isBetweenIntervals.get()) {
@@ -52,8 +55,8 @@ public class ExponentialReconnectStrategy implements ReconnectStrategy {
                 break;
             }
             case SHUTDOWN:{
-                shouldReconnectNextInterval.set(false);
                 shutdown();
+                shouldReconnectNextInterval.set(false);
             }
             case CONNECTING:{
                 shouldReconnectNextInterval.set(true);
@@ -67,20 +70,18 @@ public class ExponentialReconnectStrategy implements ReconnectStrategy {
     }
 
     synchronized void handleInterval()  {
-         log.info("Running reconnect algo: shouldReconnect: "+shouldReconnectNextInterval+" index: "+curIndex);
-         if (shouldReconnectNextInterval.get()) {
+        log.logWithPrefix(Level.WARNING, logPrefix,"Running reconnect algo: shouldReconnect: %s, index: %s", shouldReconnectNextInterval, curIndex);
+        if (shouldReconnectNextInterval.get()) {
             try {
                 if(actionToPerform != null) {
                     actionToPerform.run();
                 }
-               // if (!)
             } catch (Exception e) {
-                log.warn("failed to perform reconnect: "+e.getMessage());
+                log.logWithPrefix(Level.WARNING, e, logPrefix, "failed to perform reconnect");
             }
             if (curIndex.get() < reconnectIntervalsMillis.length) {
                 curIndex.incrementAndGet();
             }
-            //shouldReconnectNextInterval.set(false);
             threadExecutor.schedule(this::handleInterval, reconnectIntervalsMillis[curIndex.get()], TimeUnit.MILLISECONDS);
         } else {
             curIndex.set(0);

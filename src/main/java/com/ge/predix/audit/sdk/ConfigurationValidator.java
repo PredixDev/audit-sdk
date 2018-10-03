@@ -1,6 +1,7 @@
 package com.ge.predix.audit.sdk;
 
 import com.ge.predix.audit.sdk.config.AuditConfiguration;
+import com.ge.predix.audit.sdk.config.RoutingAuditConfiguration;
 import com.ge.predix.audit.sdk.exception.AuditException;
 
 /**
@@ -9,4 +10,5 @@ import com.ge.predix.audit.sdk.exception.AuditException;
 public interface ConfigurationValidator {
 
     void validateAuditConfiguration(final AuditConfiguration configuration, final AuditClientType auditClientType) throws AuditException;
+    void validateConfiguration(final RoutingAuditConfiguration routingAuditConfiguration) throws AuditException;
 }

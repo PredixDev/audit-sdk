@@ -7,4 +7,8 @@ public class AuditException extends Exception {
     public AuditException(String message) {
         super(message);
     }
+
+    public AuditException(String message, Exception e) {
+        super(message, e);
+    }
 }

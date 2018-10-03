@@ -14,6 +14,7 @@ import static org.mockito.Mockito.*;
 
 public class ExponentialReconnectStrategyTest {
 
+    private final String LOG_PREFIX = "prefix";
 
     public  class NotifyConnectedRunnable implements Runnable{
 
@@ -66,7 +67,7 @@ public class ExponentialReconnectStrategyTest {
 
     @Test
     public void notifyStateChange_backoffNotStarted_backoffShouldStart() throws Exception {
-        exponentialReconnectStrategy = spy(new ExponentialReconnectStrategy(doNothingRunnable));
+        exponentialReconnectStrategy = spy(new ExponentialReconnectStrategy(doNothingRunnable, LOG_PREFIX));
         setBackoff();
         exponentialReconnectStrategy.notifyStateChanged(AuditCommonClientState.DISCONNECTED);
         Thread.sleep(500);
@@ -76,7 +77,7 @@ public class ExponentialReconnectStrategyTest {
 
     @Test
     public void notifyStateChange_backoffIsStarted_reconnectShouldBeAttemptedTwice() throws Exception {
-            exponentialReconnectStrategy = spy(new ExponentialReconnectStrategy(doNothingRunnable));
+            exponentialReconnectStrategy = spy(new ExponentialReconnectStrategy(doNothingRunnable, LOG_PREFIX));
             setBackoff();
             //should start the flow. reconnect should happen after first interval - i.e after 100 ms
             //t0 - should schedule fot t1 (100). after t1 - always doing reconnect and reschedule.
@@ -94,7 +95,7 @@ public class ExponentialReconnectStrategyTest {
 
     @Test
     public void notifyStateChange_backoffResetAndStartsAgain_reconnectShouldBeAttemptedTwice() throws Exception {
-        exponentialReconnectStrategy = spy(new ExponentialReconnectStrategy(doNothingRunnable));
+        exponentialReconnectStrategy = spy(new ExponentialReconnectStrategy(doNothingRunnable, LOG_PREFIX));
         setBackoff();
         exponentialReconnectStrategy.notifyStateChanged(AuditCommonClientState.DISCONNECTED);
         Thread.sleep(1000);
@@ -106,7 +107,7 @@ public class ExponentialReconnectStrategyTest {
 
     @Test
     public void notifyStateChange_stateIsNotifiedManyTimes_reconnectIsAttemptedOnce() throws Exception {
-        exponentialReconnectStrategy = spy(new ExponentialReconnectStrategy(doNothingRunnable));
+        exponentialReconnectStrategy = spy(new ExponentialReconnectStrategy(doNothingRunnable, LOG_PREFIX));
         setBackoff();
         for(int i = 0; i < 100; i++) {
             exponentialReconnectStrategy.notifyStateChanged(AuditCommonClientState.DISCONNECTED);
@@ -119,7 +120,7 @@ public class ExponentialReconnectStrategyTest {
 
     @Test
     public void notifyStateChange_clientShutdown_reconnectIsNotAttempted() throws Exception {
-        exponentialReconnectStrategy = spy(new ExponentialReconnectStrategy(doNothingRunnable));
+        exponentialReconnectStrategy = spy(new ExponentialReconnectStrategy(doNothingRunnable, LOG_PREFIX));
         setBackoff();
         exponentialReconnectStrategy.notifyStateChanged(AuditCommonClientState.DISCONNECTED);
         exponentialReconnectStrategy.notifyStateChanged(AuditCommonClientState.SHUTDOWN);
@@ -131,7 +132,7 @@ public class ExponentialReconnectStrategyTest {
 
     @Test
     public void notifyStateChange_actionThrowsException_reconnectContinues() throws Exception {
-        exponentialReconnectStrategy = spy(new ExponentialReconnectStrategy(reconnectFailureRunnable));
+        exponentialReconnectStrategy = spy(new ExponentialReconnectStrategy(reconnectFailureRunnable, LOG_PREFIX));
         setBackoff();
         exponentialReconnectStrategy.notifyStateChanged(AuditCommonClientState.DISCONNECTED);
         Thread.sleep(150);
@@ -142,6 +143,7 @@ public class ExponentialReconnectStrategyTest {
         verify(reconnectFailureRunnable,times(2)).run();
 
         doAnswer(invocation -> {
+            exponentialReconnectStrategy.notifyStateChanged(AuditCommonClientState.CONNECTING);
             exponentialReconnectStrategy.notifyStateChanged(AuditCommonClientState.CONNECTED); return null;}).when(reconnectFailureRunnable).run();
 
         Thread.sleep(1000);

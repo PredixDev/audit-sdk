@@ -6,6 +6,9 @@ import com.ge.predix.audit.sdk.exception.AuditException;
 import com.ge.predix.audit.sdk.exception.VersioningException;
 import com.ge.predix.audit.sdk.message.AuditEvent;
 import com.ge.predix.audit.sdk.message.tracing.LifeCycleEnum;
+import com.ge.predix.audit.sdk.util.CustomLogger;
+import com.ge.predix.audit.sdk.util.ExceptionUtils;
+import com.ge.predix.audit.sdk.util.LoggerUtils;
 import com.ge.predix.audit.sdk.util.StreamUtils;
 import com.ge.predix.audit.sdk.validator.ValidatorReport;
 import com.ge.predix.eventhub.Ack;
@@ -28,23 +31,24 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Logger;
+import java.util.logging.Level;
 import java.util.stream.Collectors;
+
 
 /**
  * Created by Martin Saad on 1/31/2017.
  */
+@SuppressWarnings("unchecked")
+public class AuditClientAsyncImpl extends AbstractAuditClientImpl {
 
-final public class AuditClientAsyncImpl extends AbstractAuditClientImpl {
+	static final String FAILED_PRECONDITION = "FAILED_PRECONDITION";
+	private static final String AUDIT_CACHE_IS_FULL = "audit cache is full";
+    private static final String UNAUTHENTICATED = "UNAUTHENTICATED";
 
-	public static final String FAILED_PRECONDITION = "FAILED_PRECONDITION";
-	public static final String AUDIT_CACHE_IS_FULL = "audit cache is full";
-    public static final String UNAUTHENTICATED = "UNAUTHENTICATED";
-    @Getter
-	private static Logger log = Logger.getLogger(AuditClientAsyncImpl.class.getName());
+	private static CustomLogger log = LoggerUtils.getLogger(AuditClientAsyncImpl.class.getName());
 
 	@Getter
-	protected final AuditCallback callback;
+	protected final TypedAuditCallback callback;
 
 	@Setter
 	private int queueSize;
@@ -55,16 +59,17 @@ final public class AuditClientAsyncImpl extends AbstractAuditClientImpl {
 	@Getter
 	private LinkedBlockingQueue<QueueElement> eventQueue;
 
-	ScheduledExecutorService retryExecutorService;
+	@Getter
+	private ScheduledExecutorService retryExecutorService;
 
-	public AuditClientAsyncImpl(AuditConfiguration configuration, AuditCallback callback, TracingHandler tracingHandler)
+	public AuditClientAsyncImpl(AuditConfiguration configuration, TypedAuditCallback callback, TracingHandler tracingHandler)
 			throws EventHubClientException, AuditException {
 		super(configuration, tracingHandler);
-		log.warning("initializing auditClientAsync");
+		log.logWithPrefix(Level.WARNING, logPrefix, "initializing auditClientAsync");
 
 		PublishConfiguration publishConfiguration = new PublishAsyncConfiguration.Builder().build();
 		this.client = buildClient(configuration, publishConfiguration);
-		this.reconnectEngine = ReconnectStrategyFactory.getReconnectStrategy(configuration.getReconnectMode(), this::innerReconnect);
+		this.reconnectEngine = ReconnectStrategyFactory.getReconnectStrategy(configuration.getReconnectMode(), this::innerReconnect, logPrefix);
 		this.callback = callback;
 		this.eventMap = Maps.newConcurrentMap();
 		this.queueSize = configuration.getMaxNumberOfEventsInCache();
@@ -97,8 +102,9 @@ final public class AuditClientAsyncImpl extends AbstractAuditClientImpl {
 	 */
 	@Override
 	public synchronized AuditingResult audit(List<AuditEvent> events) {
-		throwIfShutdown();if(events != null) {
-			log.info(String.format("starting audit %d messages", events.size()));
+		throwIfShutdown();
+		if(events != null) {
+			log.logWithPrefix(Level.INFO, logPrefix, "starting audit %d messages", events.size());
 			StreamUtils.partitionOf(events, this.bulkSize).forEach(
 					auditEvents -> {
 						List<AuditEvent> validEvents = validateEvents(auditEvents);
@@ -112,36 +118,34 @@ final public class AuditClientAsyncImpl extends AbstractAuditClientImpl {
 	/******************************************** PRIVATE ***********************************/
 
 	private List<AuditEvent> validateEvents(Collection<AuditEvent> events) {
-		log.info("Trying to validate " + events.size() + " events");
+		log.logWithPrefix(Level.INFO, logPrefix, "Trying to validate %d events", events.size());
 		List<AuditEvent> validEvents = new ArrayList<>(events.size());
 		events.forEach(event -> {
 			try {
 				List<ValidatorReport> report = validatorService.validate(event);
 				if (!report.isEmpty()) {
-					log.info("failed to validate event: "+event.getMessageId());
 					callback.onValidate(event, report);
 				} else{
 					validEvents.add(event);
 				}
 			} catch (VersioningException e) {
-				log.warning(e.toString());
-				callback.onFailure(event, FailReport.VERSION_NOT_SUPPORTED, e.toString());
+				callback.onFailure(event, FailReport.VERSION_NOT_SUPPORTED, generateLogs(logPrefix, ExceptionUtils.toString(e)));
 			}
 		});
 		return validEvents;
 	}
 
-	protected void addToEventhubCache(Collection<AuditEvent> events) {
-		log.info("adding " + events.size() + " events to EventHub client");
+	private void addToEventhubCache(Collection<AuditEvent> events) {
+		log.logWithPrefix(Level.INFO, logPrefix, "adding %d events to EventHub client", events.size());
 		events.forEach(event -> {
 			try {
 				String body = om.writeValueAsString(event);
 				client.addMessage(event.getMessageId(), body, null);
 			} catch (JsonProcessingException e) {
-				log.info("failed to parse event: "+e.toString());
+				log.logWithPrefix(Level.INFO, e, logPrefix, "failed to parse event.");
 				updateEventFailureDetails(event.getMessageId(),FailReport.JSON_ERROR, e.toString());
 			} catch (EventHubClientException.AddMessageException e) {
-				log.info("failed to add event t eventhub cache: ");
+				log.logWithPrefix(Level.INFO, e, logPrefix, "failed to add event t eventhub cache");
 				updateEventFailureDetails(event.getMessageId(), FailReport.ADD_MESSAGE_ERROR, e.toString());
 			}
 		});
@@ -151,9 +155,10 @@ final public class AuditClientAsyncImpl extends AbstractAuditClientImpl {
 		try {
 			reconnect();
 		} catch (EventHubClientException e) {
+			String err =  ExceptionUtils.toString(e);
 			setStateAndNotify(AuditCommonClientState.DISCONNECTED);
-			callback.onFailure(FailReport.RECONNECT_FAILURE, e.getMessage());
-			log.warning(String.format("reconnect failed in reconnectStrategy: %s", e.toString()));
+			callback.onFailure(FailReport.RECONNECT_FAILURE, err);
+			log.logWithPrefix(Level.WARNING, e, logPrefix,"reconnect failed in reconnectStrategy");
 		}
 	}
 
@@ -163,14 +168,14 @@ final public class AuditClientAsyncImpl extends AbstractAuditClientImpl {
 				addToEventhubCache(auditToSend);
 				try {
 					client.flush();
-					log.info(String.format("%d messages sent", auditToSend.size()));
+					log.logWithPrefix(Level.INFO, logPrefix, "%d messages sent", auditToSend.size());
 				} catch (EventHubClientException e) {
-					log.warning("failed to publish: " + e.getMessage());
+					log.logWithPrefix(Level.WARNING, e, logPrefix, "failed to publish audit events");
 				}
 			}
 		}
 		else{
-			log.warning("flush is not attempted while client is disconnected");
+			log.logWithPrefix(Level.WARNING, logPrefix, "flush is not attempted while client is disconnected");
 		}
 	}
 
@@ -181,11 +186,10 @@ final public class AuditClientAsyncImpl extends AbstractAuditClientImpl {
 	}
 
 	void removeLatestElementFromCache(){
-		log.warning(String.format("queue size reached to limit of %d elements. removing the oldest event", queueSize));
+		log.logWithPrefix(Level.INFO, logPrefix,"queue size reached to limit of %d elements. removing the oldest event", queueSize);
 		String messageId = eventQueue.poll().getMessageId();
 		EventContainer eventContainer = eventMap.remove(messageId);
-		log.info(String.format("event with id: %s was removed from cache", messageId));
-		callback.onFailure(eventContainer.getAuditEvent(), FailReport.CACHE_IS_FULL, AUDIT_CACHE_IS_FULL);
+		callback.onFailure(eventContainer.getAuditEvent(), FailReport.CACHE_IS_FULL, generateLogs(logPrefix, AUDIT_CACHE_IS_FULL));
 	}
 
 	void addEventsToCache(Collection<AuditEvent> events) {
@@ -193,9 +197,8 @@ final public class AuditClientAsyncImpl extends AbstractAuditClientImpl {
 		events.forEach(event -> {
 			removeEventsWhenLimitReached();
 			addEventToCache(event);
-			log.info(String.format("event with id %s was added successfully to cache\n" +
-							"eventMap size: %d, eventQueue size: %d",
-					event.getMessageId(), eventMap.size(), eventQueue.size()));
+			log.logWithPrefix(Level.INFO, logPrefix, "event with id %s was added successfully to cache eventMap size: %d, eventQueue size: %d",
+					event.getMessageId(), eventMap.size(), eventQueue.size());
 		});
 	}
 
@@ -212,23 +215,23 @@ final public class AuditClientAsyncImpl extends AbstractAuditClientImpl {
 	}
 
 	Client.PublishCallback handleEventHubCallback() throws EventHubClientException {
-		log.warning("registering eventhub callback");
+		log.logWithPrefix(Level.WARNING, logPrefix,"registering eventhub callback");
 		Client.PublishCallback callback = new Client.PublishCallback() {
 
 			@Override
 			public void onAck(List<Ack> list) {
-				log.info("new callback onAck from eventHub");
+				log.logWithPrefix(Level.INFO, logPrefix,"new callback onAck from eventHub");
 				if ((list != null) && !list.isEmpty()){
 					setStateAndNotify(AuditCommonClientState.ACKED);
 					list.forEach(ack -> handleAck(ack));
 				} else{
-					log.info("ack list is empty");
+					log.logWithPrefix(Level.INFO, logPrefix,"ack list is empty");
 				}
 			}
 
 			@Override
 			public void onFailure(Throwable throwable) {
-				log.info(String.format("new callback onFailure from eventHub. error %s", throwable));
+				log.logWithPrefix(Level.INFO, throwable, logPrefix, "new callback onFailure from eventHub");
 				if (throwable.getMessage() != null && throwable.getMessage().contains(FAILED_PRECONDITION)) {
 					setStateAndNotify(AuditCommonClientState.DISCONNECTED);
 					getCallback().onFailure(FailReport.STREAM_IS_CLOSE, throwable.toString());
@@ -239,7 +242,7 @@ final public class AuditClientAsyncImpl extends AbstractAuditClientImpl {
 			}
 		};
 		client.registerPublishCallback(callback);
-		log.info("callback for eventhub is registered");
+		log.info(generateLogs(logPrefix,"callback for eventhub is registered"));
 		return callback;
 	}
 
@@ -250,15 +253,15 @@ final public class AuditClientAsyncImpl extends AbstractAuditClientImpl {
 				if (ack.getStatusCode() == AckStatus.ACCEPTED){
 					removeElementAndNotifyOnSuccess(eventId);
 				} else{
-					log.info(String.format("got NACK for event id %s. NACK: %s", eventId, printAck(ack)));
+					log.logWithPrefix(Level.INFO, logPrefix, "got NACK for event id %s. NACK: %s", eventId, printAck(ack));
 					updateEventFailureDetails(eventId,FailReport.BAD_ACK, printAck(ack));
 				}
 			} else{ //eventId is not in the cache
-				log.info(String.format("event with id {%s} was not found in cache", eventId));
+				log.logWithPrefix(Level.INFO, logPrefix, "event with id %s was not found in cache", eventId);
 			}
 		} else { // if is tracing
 			tracingHandler.sendCheckpoint(ack);
-			log.warning("event: " + eventId+ " is tracing. removing from cache event: ");
+			log.logWithPrefix(Level.INFO, logPrefix, "event: %s is tracing. removing from cache event",eventId);
 			removeElementFromCache(eventId);
 		}
 	}
@@ -273,16 +276,16 @@ final public class AuditClientAsyncImpl extends AbstractAuditClientImpl {
 		EventContainer eventContainer = removeElementFromCache(eventId);
 		AuditEvent auditEvent = eventContainer == null? null : eventContainer.getAuditEvent();
 		if (auditEvent != null){
-			log.info(String.format("ack from message id: %s was successful. notifying the user onSuccess"
-					, auditEvent.getMessageId()));
+			log.logWithPrefix(Level.INFO, logPrefix,"ack from message id: %s was successful. notifying the user onSuccess"
+					, auditEvent.getMessageId());
 			callback.onSuccees(auditEvent);
 		} else{
-			log.warning(String.format("event %s was already ACKed", eventId));
+			log.logWithPrefix(Level.INFO, logPrefix,"event %s was already ACKed", eventId);
 		}
 	}
 
 	List<AuditEvent> incrementRetryCountAndSend(List<QueueElement> elements) {
-		log.info(String.format("trying to audit %d events in cache", elements.size()));
+		log.logWithPrefix(Level.INFO, logPrefix,"trying to audit %d events in cache", elements.size());
 		List<AuditEvent> eventsToSend = new ArrayList<>(elements.size());
 		List<AuditEvent> eventsToRemove = new ArrayList<>(elements.size());
 		elements.forEach(element -> {
@@ -295,7 +298,7 @@ final public class AuditClientAsyncImpl extends AbstractAuditClientImpl {
 					eventsToRemove.add(eventContainer.getAuditEvent());
 				}
 			} else{
-				log.info(String.format("Event:{%s} already removed from cache", messageId));
+				log.logWithPrefix(Level.INFO, logPrefix,"Event:{%s} already removed from cache", messageId);
 				eventQueue.remove(QueueElement.builder().messageId(messageId).build());
 			}
 		});
@@ -310,8 +313,8 @@ final public class AuditClientAsyncImpl extends AbstractAuditClientImpl {
 	 */
 	protected synchronized void handleNotAcceptedEvents(){
 		long start = System.currentTimeMillis();
-		log.info(String.format("scanning the map for events{%d} with no ack: start {%d}",
-				eventMap.size(), start));
+		log.logWithPrefix(Level.INFO, logPrefix,"scanning the map for events{%d} with no ack: startTime {%d}",
+				eventMap.size(), start);
 		retryNotAcceptedEvents(System.currentTimeMillis())
 				.forEach(auditEvent -> {
 					EventContainer eventContainer = removeElementFromCache(auditEvent.getMessageId());
@@ -319,15 +322,15 @@ final public class AuditClientAsyncImpl extends AbstractAuditClientImpl {
 						AuditEventFailReport auditEventFailReport = eventContainer.getAuditEventFailReport();
 						FailReport failReport = (auditEventFailReport == null? FailReport.NO_ACK : auditEventFailReport.getFailureReason());
 						String description = (auditEventFailReport == null? NO_ACK_WAS_RECEIVED : auditEventFailReport.getDescription());
-						callback.onFailure(auditEvent, failReport, description);
-						log.info(String.format("audit event id: %s was removed from cache with error %s: %s",auditEvent.getMessageId(),failReport,description));
+						callback.onFailure(auditEvent, failReport, generateLogs(logPrefix, description));
+						log.logWithPrefix(Level.INFO, logPrefix,"audit event id: %s was removed from cache with error %s: %s",auditEvent.getMessageId(),failReport,description);
 					}
 					else{
-						tracingHandler.sendCheckpoint(auditEvent, LifeCycleEnum.FAIL ,"No more retries");
+						tracingHandler.sendCheckpoint(auditEvent, LifeCycleEnum.FAIL ,generateLogs(logPrefix, "No more retries"));
 					}
 				});
-		log.info(String.format("end scanning the map for events{%d} with no ack: end {%d}",
-				eventMap.size(), System.currentTimeMillis() - start));
+		log.logWithPrefix(Level.INFO, logPrefix,"end scanning the map for events{%d} with no ack: endTime {%d}",
+				eventMap.size(), System.currentTimeMillis() - start);
 	}
 
 	List<AuditEvent> retryNotAcceptedEvents(long start) {
@@ -342,15 +345,36 @@ final public class AuditClientAsyncImpl extends AbstractAuditClientImpl {
 
 	@Override
 	protected void sendTracingMessage(){{
-		tracingHandler.sendInitialCheckpoint().ifPresent((event)->audit(event));
+		tracingHandler.sendInitialCheckpoint().ifPresent(this::audit);
         }
 	}
-
 
 	@Override
 	public synchronized void shutdown() {
 		retryExecutorService.shutdownNow();
+        eventMap.values().stream().map(EventContainer::getAuditEvent)
+                .filter(e -> !tracingHandler.isTracingEvent(e))
+                .collect(Collectors.toList())
+                .forEach(e -> callback.onFailure(e, FailReport.NO_MORE_RETRY, generateLogs(logPrefix, "Client is in shutdown state and cannot handle events")));
 		super.shutdown();
 	}
+
+	public void gracefulShutdown() {
+		for (int i = 0; i < retryCount + 2; i++) { //1 more to clean events with timestamp > now-noAckLimit
+			if (eventMap.isEmpty()) {
+				break;
+			}
+			else {
+				ExceptionUtils.swallowException( () -> Thread.sleep(noAckLimit),
+						generateLogs(logPrefix, "Failed to sleep during gracefulShutdown"));
+			}
+		}
+        shutdown();
+	}
+
+	private String generateLogs(String logPrefix, String s) {
+		return String.format("%s%s", logPrefix, s);
+	}
+
 }
 

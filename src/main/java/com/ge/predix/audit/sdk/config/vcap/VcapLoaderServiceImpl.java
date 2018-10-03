@@ -1,20 +1,25 @@
 package com.ge.predix.audit.sdk.config.vcap;
 
-import java.util.logging.Logger;
-
-import com.ge.predix.audit.sdk.config.AuditConfiguration;
-import com.ge.predix.audit.sdk.config.ReconnectMode;
+import com.ge.predix.audit.sdk.config.*;
 import com.ge.predix.audit.sdk.exception.VcapLoadException;
+import com.ge.predix.audit.sdk.util.CustomLogger;
+import com.ge.predix.audit.sdk.util.EnvUtils;
+import com.ge.predix.audit.sdk.util.LoggerUtils;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-
 import lombok.Getter;
 import lombok.Setter;
+
+import javax.annotation.Nullable;
+import java.util.function.Consumer;
+import java.util.function.Function;
+
+import static com.ge.predix.audit.sdk.util.EnvUtils.mapExistingEnvironmentVar;
 
 /**
  * Created by Igor on 20/11/2016.
  */
-public class VcapLoaderServiceImpl implements VcapLoaderService{
+public class VcapLoaderServiceImpl implements VcapLoaderService {
 
     private static final String VCAP_SERVICES = "VCAP_SERVICES";
     private static final String AUDIT_SERVICE_NAME = "AUDIT_SERVICE_NAME";
@@ -27,8 +32,7 @@ public class VcapLoaderServiceImpl implements VcapLoaderService{
     private static final String AUDIT_MAX_CACHED_EVENTS = "AUDIT_MAX_CACHED_EVENTS";
     private static final String AUDIT_RECONNECT_POLICY = "AUDIT_RECONNECT_POLICY";
 
-    @Getter
-    private static Logger log = Logger.getLogger(VcapLoaderServiceImpl.class.getName());
+    private static CustomLogger log = LoggerUtils.getLogger(VcapLoaderServiceImpl.class.getName());
 
     @Setter
     private String vcapServicesEnv;
@@ -104,13 +108,79 @@ public class VcapLoaderServiceImpl implements VcapLoaderService{
 
     @Override
     public AuditConfiguration getConfigFromVcap() throws VcapLoadException {
-        log.warning("vcapServicesEnv:" + vcapServicesEnv);
-        log.warning("vcapApplicationEnv:" + vcapApplicationEnv);
+        log.warning("vcapServicesEnv: %s" , vcapServicesEnv);
+        log.warning("vcapApplicationEnv: %s" , vcapApplicationEnv);
         deserializer.setAuditServiceName(auditServiceName);
         vcapServices = gson.fromJson(vcapServicesEnv, VcapServices.class);
         vcapApplication = gson.fromJson(vcapApplicationEnv, VcapApplication.class);
         validateVcap();
         return buildAuditConfiguration();
+    }
+
+    @Override
+    public RoutingAuditConfiguration getRoutingConfigFromVcap() throws VcapLoadException {
+        try {
+            AuditConfiguration configuration = getConfigFromVcap();
+            String systemUaaUrl = EnvUtils.getEnvironmentVar("AUDIT_SYSTEM_TRUSTED_ISSUER");
+            return RoutingAuditConfiguration.builder()
+                .appNameConfig(AppNameConfig.builder()
+                        .clientId(EnvUtils.getEnvironmentVar("AUDIT_APP_NAME_CLIENT_ID"))
+                        .clientSecret(EnvUtils.getEnvironmentVar("AUDIT_APP_NAME_CLIENT_SECRET"))
+                        .uaaUrl(systemUaaUrl)
+                        .build())
+                .sharedAuditConfig(SharedAuditConfig.builder()
+                        .ehubUrl(String.format("%s:%d", configuration.getEhubHost(), configuration.getEhubPort()))
+                        .ehubZoneId(configuration.getEhubZoneId())
+                        .auditZoneId(configuration.getAuditZoneId())
+                        .uaaClientId(configuration.getUaaClientId())
+                        .uaaClientSecret(configuration.getUaaClientSecret())
+                        .uaaUrl(configuration.getUaaUrl())
+                        .tracingToken(configuration.getTracingToken())
+                        .tracingUrl(configuration.getTracingUrl())
+                        .build())
+                .systemConfig(SystemConfig.builder()
+                        .clientId(EnvUtils.getEnvironmentVar("AUDIT_SYSTEM_CLIENT_ID"))
+                        .clientSecret(EnvUtils.getEnvironmentVar("AUDIT_SYSTEM_CLIENT_SECRET"))
+                        .tokenServiceUrl(EnvUtils.getEnvironmentVar("AUDIT_TOKEN_SERVICE_URL"))
+                        .tmsUrl(EnvUtils.getEnvironmentVar("AUDIT_TMS_URL"))
+                        .build())
+                .tenantAuditConfig(TenantAuditConfig.builder()
+                        .auditServiceName(configuration.getAuditServiceName())
+                        .bulkMode(configuration.getBulkMode())
+                        .maxNumberOfEventsInCachePerTenant(configuration.getMaxNumberOfEventsInCache())
+                        .maxRetryCount(configuration.getMaxRetryCount())
+                        .retryIntervalMillis(configuration.getRetryIntervalMillis())
+                        .spaceName(configuration.getSpaceName())
+                        .cfAppName(vcapApplication.getAppName())
+                         .traceEnabled(configuration.isTraceEnabled())
+                        .tracingInterval(configuration.getTracingInterval())
+                        .build())
+                .routingResourceConfig(getRoutingResourceConfig())
+                .build();
+        } catch (Exception e) {
+            throw new VcapLoadException(e);
+        }
+    }
+
+    public RoutingResourceConfig getRoutingResourceConfig() {
+        RoutingResourceConfig.RoutingResourceConfigBuilder builder = RoutingResourceConfig.builder();
+        updateEnv("AUDIT_ROUTING_NUM_OF_CONNECTIONS", Integer::valueOf, builder::numOfConnections);
+        updateEnv("AUDIT_ROUTING_SHARED_CACHE_SIZE", Integer::valueOf, builder::sharedTenantCacheSize);
+        updateEnv("AUDIT_ROUTING_CACHE_REFRESH_PERIOD", Long::valueOf, builder::cacheRefreshPeriod);
+        updateEnv("AUDIT_ROUTING_CONNECTION_LIFETIME", Long::valueOf, builder::connectionLifetime);
+        updateEnv("AUDIT_ROUTING_MAX_CONCURRENT_REQUESTS", Integer::valueOf, builder::maxConcurrentAuditRequest);
+
+        return builder.build();
+    }
+
+    private <T> void updateEnv(String parameter, Function<String, T> function, Consumer<T> consumer){
+        consumeIfPresent(mapExistingEnvironmentVar(parameter, function), consumer);
+    }
+
+    private <T> void consumeIfPresent(@Nullable T value, Consumer<T> consumer) {
+        if ( value != null ) {
+            consumer.accept(value);
+        }
     }
 
     @Override
@@ -138,23 +208,19 @@ public class VcapLoaderServiceImpl implements VcapLoaderService{
             AuditService service = vcapServices.getAuditService().get(0);
             AuditServiceCredentials auditServiceCredentials = service.getCredentials();
 
-            String ehubAddr = auditServiceCredentials.getEventHubUri();
-            String[] eventHubHostandPort = ehubAddr.split(":");
-            String eventHubHost = eventHubHostandPort[0];
-            int eventHubPort = Integer.parseInt(eventHubHostandPort[1]);
-
             AuditConfiguration.AuditConfigurationBuilder auditConfigurationBuilder = AuditConfiguration.builder()
                     .ehubZoneId(auditServiceCredentials.getEventHubZoneId())
                     .uaaUrl(uaaUrl)
                     .uaaClientId(uaaClientId)
                     .uaaClientSecret(uaaClientSecret)
-                    .ehubHost(eventHubHost)
-                    .ehubPort(eventHubPort)
+                    .ehubUrl(auditServiceCredentials.getEventHubUri())
                     .tracingUrl(auditServiceCredentials.getTracingUrl())
                     .tracingToken(auditServiceCredentials.getTracingToken())
                     .tracingInterval(auditServiceCredentials.getTracingInterval())
-                    .appName(vcapApplication.getName())
+                    .traceEnabled(true)
+                    .cfAppName(vcapApplication.getName())
                     .auditServiceName(auditServiceName)
+                    .auditZoneId(auditServiceCredentials.getAuditQueryApiScope().split("\\.")[2])
                     .spaceName(vcapApplication.getSpaceName());
             //handle optional params. if not set here, will be assigned with default values by the builder.
             if(maxRetries != null) {
@@ -174,4 +240,6 @@ public class VcapLoaderServiceImpl implements VcapLoaderService{
             throw new VcapLoadException(t.getMessage());
         }
     }
+
+
 }

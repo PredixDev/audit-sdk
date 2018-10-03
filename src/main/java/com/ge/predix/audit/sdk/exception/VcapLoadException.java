@@ -7,4 +7,8 @@ public class VcapLoadException extends Exception {
     public VcapLoadException(String message) {
         super(message);
     }
+
+    public VcapLoadException(Exception e) {
+        super(e);
+    }
 }

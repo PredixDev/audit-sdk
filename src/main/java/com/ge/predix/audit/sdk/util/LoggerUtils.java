@@ -1,41 +1,44 @@
 package com.ge.predix.audit.sdk.util;
 
-import java.util.logging.Level;
+import io.netty.util.internal.StringUtil;
 
-import com.ge.predix.audit.sdk.*;
-import com.ge.predix.audit.sdk.config.vcap.VcapLoaderServiceImpl;
-import com.ge.predix.audit.sdk.message.tracing.TracingMessageSenderImpl;
-import com.ge.predix.audit.sdk.validator.ValidatorServiceImpl;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class LoggerUtils {
 	
 	private static final String AUDIT_DEBUG_ENABLED = "AUDIT_DEBUG_ENABLED";
+	private static volatile Level logLevel = Level.WARNING;
+	private static final List<CustomLogger> loggers = Collections.synchronizedList(new ArrayList<>());
 
-	private static volatile boolean isDebugLevel = Boolean.FALSE;
+	public static CustomLogger getLogger(String name) {
+	    Logger log = Logger.getLogger(name);
+        log.setLevel(logLevel);
+        CustomLogger customLogger = new CustomLogger(log);
+        loggers.add(customLogger);
+        return  customLogger;
+    }
 
 	public static void setLogLevelFromVcap() {
-		Level level = Level.WARNING;
 		String debug = System.getenv(AUDIT_DEBUG_ENABLED);
-		
-		if(Boolean.valueOf(debug)) { // it doesn't throw an exception. it's TRUE only if isDebugLevel="true", otherwise it's false
-			level = Level.INFO;
-			isDebugLevel = Boolean.TRUE;
-        }
-		setLoggersLogLevel(level);
+        logLevel = Boolean.valueOf(debug)? Level.INFO : Level.WARNING; //Note that Boolean.valueOf(debug) doesn't throw an exception. it's TRUE only if isDebugLevel="true"
+		setLoggersLogLevel(logLevel);
 	}
 
 	public static boolean isDebugLogLevel(){
-		return isDebugLevel;
+		return logLevel.equals(Level.INFO);
 	}
 
-	public static void setLoggersLogLevel(Level level) {
-		AbstractAuditClientImpl.getLog().setLevel(level);
-		AuditClientAsyncImpl.getLog().setLevel(level);
-		AuditClientSyncImpl.getLog().setLevel(level);
-		DirectMemoryMonitor.getLog().setLevel(level);
-		TracingHandlerImpl.getLog().setLevel(level);
-		TracingMessageSenderImpl.getLog().setLevel(level);
-		ValidatorServiceImpl.getLog().setLevel(level);
-		VcapLoaderServiceImpl.getLog().setLevel(level);
+	public synchronized static void setLoggersLogLevel(Level level) {
+	    logLevel = level;
+	    loggers.forEach(logger -> logger.setLogLevel(level));
 	}
+
+	public static String generateLogPrefix(String auditZoneId) {
+		return (StringUtil.isNullOrEmpty(auditZoneId)) ? "" : String.format("[azid {%s}]: ",auditZoneId);
+	}
+
 }
