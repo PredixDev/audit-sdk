@@ -19,7 +19,7 @@ Use the SDK to publish audit messages using the Audit client.
     <dependency>
       <groupId>com.ge.predix</groupId>
       <artifactId>audit-sdk</artifactId>
-      <version>1.3.0</version>
+      <version>1.3.1</version>
     </dependency>
 ```
 
@@ -37,7 +37,6 @@ Audit SDK supports two types of clients:
 - https://docs.predix.io/en-US/content/service/security/audit/
 - https://docs.predix.io/en-US/content/service/security/audit/using-predix-audit-service
 
-<<<<<<< HEAD
  The results of the audit operation, as well as other client related info are propagated through the AuditCallback.
 
  You should implement the AuditCallback interface and supply the auditClient with the implementation.
@@ -99,6 +98,7 @@ AuditConfiguration.builder()
     .reconnectMode(ReconnectMode.AUTOMATIC)
     .build()
 ```
+
 ##### Authentication token
 The sdk supports two modes of authentication:
  - Using a UAA user and pass. Use the `AuditConfiguration.builder()` to obtain a regular, UAA based configuration.
@@ -139,4 +139,3 @@ If APPLICATION_NAME variable was set in the environment, it will be added to eac
 - https://github.com/PredixDev/samplePub-POJO
 
 [![Analytics](https://ga-beacon.appspot.com/UA-82773213-1/audit-sdk/readme?pixel)](https://github.com/PredixDev)
-=======

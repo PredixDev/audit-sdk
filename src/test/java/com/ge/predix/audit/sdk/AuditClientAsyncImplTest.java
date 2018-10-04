@@ -15,6 +15,8 @@ import com.ge.predix.eventhub.AckStatus;
 import com.ge.predix.eventhub.EventHubClientException;
 import com.ge.predix.eventhub.Timestamp;
 import com.ge.predix.eventhub.client.Client;
+import com.ge.predix.eventhub.configuration.EventHubConfiguration;
+import com.ge.predix.eventhub.configuration.PublishConfiguration;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Queues;
 import org.joda.time.DateTime;
@@ -126,13 +128,29 @@ public class AuditClientAsyncImplTest {
 
     @Test
     public void initGoodTest() throws EventHubClientException, AuditException {
-        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, new TestHelper(), new TracingHandlerImpl(goodConfiguration));
+        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, new TestHelper(), new TracingHandlerImpl(goodConfiguration)) {
+            @Override
+            protected Client buildClient(AuditConfiguration auditConfiguration, PublishConfiguration publishConfiguration)
+                    throws EventHubClientException {
+                auditCommonClientState = AuditCommonClientState.CONNECTING;
+                client = mock(Client.class);
+                return client;
+            }
+        };
         auditClientAsyncImpl.setQueueSize(queueSize);
     }
 
     @Test
     public void bulkSizeTest() throws EventHubClientException, AuditException {
-        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, new TestHelper(), new TracingHandlerImpl(goodConfiguration));
+        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, new TestHelper(), new TracingHandlerImpl(goodConfiguration)){
+            @Override
+            protected Client buildClient(AuditConfiguration auditConfiguration, PublishConfiguration publishConfiguration)
+                    throws EventHubClientException {
+                auditCommonClientState = AuditCommonClientState.CONNECTING;
+                client = mock(Client.class);
+                return client;
+            }
+        };
         auditClientAsyncImpl.setQueueSize(queueSize);
         int expectedBulk = 1;
         auditClientAsyncImpl.setBulkSize(expectedBulk);
@@ -143,7 +161,15 @@ public class AuditClientAsyncImplTest {
     @Test
     public void removeElementFromCacheTest_elementIsRemoved() throws EventHubClientException, AuditException {
         TestHelper cb = new TestHelper();
-        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration));
+        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration)){
+            @Override
+            protected Client buildClient(AuditConfiguration auditConfiguration, PublishConfiguration publishConfiguration)
+                    throws EventHubClientException {
+                auditCommonClientState = AuditCommonClientState.CONNECTING;
+                client = mock(Client.class);
+                return client;
+            }
+        };
         auditClientAsyncImpl.setQueueSize(queueSize);
 
         auditClientAsyncImpl.getEventMap().put(id_1, eventContainer_1);
@@ -157,7 +183,15 @@ public class AuditClientAsyncImplTest {
     @Test
     public void removeLatestElementFromCacheTest() throws EventHubClientException, AuditException {
         TestHelper cb = new TestHelper();
-        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration));
+        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration)){
+            @Override
+            protected Client buildClient(AuditConfiguration auditConfiguration, PublishConfiguration publishConfiguration)
+                    throws EventHubClientException {
+                auditCommonClientState = AuditCommonClientState.CONNECTING;
+                client = mock(Client.class);
+                return client;
+            }
+        };
         auditClientAsyncImpl.setQueueSize(queueSize);
         auditClientAsyncImpl.getEventMap().put(id_1, eventContainer_1);
         auditClientAsyncImpl.getEventQueue().offer(queueElement_1);
@@ -172,7 +206,15 @@ public class AuditClientAsyncImplTest {
     @Test
     public void addEventsToCacheTest_eventsAreAdded() throws EventHubClientException, AuditException {
         TestHelper cb = new TestHelper();
-        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration));
+        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration)){
+            @Override
+            protected Client buildClient(AuditConfiguration auditConfiguration, PublishConfiguration publishConfiguration)
+                    throws EventHubClientException {
+                auditCommonClientState = AuditCommonClientState.CONNECTING;
+                client = mock(Client.class);
+                return client;
+            }
+        };
         auditClientAsyncImpl.setQueueSize(queueSize);
         List<AuditEvent> events = Lists.newArrayList(auditEvent_1, auditEvent_2);
         auditClientAsyncImpl.addEventsToCache(events);
@@ -183,7 +225,15 @@ public class AuditClientAsyncImplTest {
     @Test
     public void addEventsToCache_EventQueueBiggerThanQueueSize_lastElementISRemovedAndNotified() throws EventHubClientException, AuditException {
         TestHelper cb = new TestHelper();
-        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration));
+        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration)){
+            @Override
+            protected Client buildClient(AuditConfiguration auditConfiguration, PublishConfiguration publishConfiguration)
+                    throws EventHubClientException {
+                auditCommonClientState = AuditCommonClientState.CONNECTING;
+                client = mock(Client.class);
+                return client;
+            }
+        };
         auditClientAsyncImpl.setQueueSize(1);
 
         auditClientAsyncImpl.addEventsToCache(Arrays.asList(auditEvent_1, auditEvent_2));
@@ -198,7 +248,15 @@ public class AuditClientAsyncImplTest {
     public void addToEventhubAndFlushTest() throws EventHubClientException, AuditException {
         Client client = mock(Client.class);
         TestHelper cb = new TestHelper();
-        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration));
+        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration)){
+            @Override
+            protected Client buildClient(AuditConfiguration auditConfiguration, PublishConfiguration publishConfiguration)
+                    throws EventHubClientException {
+                auditCommonClientState = AuditCommonClientState.CONNECTING;
+                client = mock(Client.class);
+                return client;
+            }
+        };
         auditClientAsyncImpl.setOm(om);
         auditClientAsyncImpl.setClient(client);
 
@@ -211,7 +269,15 @@ public class AuditClientAsyncImplTest {
     @Test
     public void handleAckAcceptedTest_shouldNotifyOnSuccess() throws EventHubClientException, AuditException {
         TestHelper cb = new TestHelper();
-        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration));
+        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration)){
+            @Override
+            protected Client buildClient(AuditConfiguration auditConfiguration, PublishConfiguration publishConfiguration)
+                    throws EventHubClientException {
+                auditCommonClientState = AuditCommonClientState.CONNECTING;
+                client = mock(Client.class);
+                return client;
+            }
+        };
 
         auditClientAsyncImpl.getEventMap().put("1", eventContainer_1);
         auditClientAsyncImpl.getEventQueue().offer(queueElement_1);
@@ -225,7 +291,15 @@ public class AuditClientAsyncImplTest {
     @Test
     public void handleAck_eventIdIsNotInTheCacheTest() throws EventHubClientException, AuditException {
         TestHelper cb = new TestHelper();
-        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration));
+        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration)){
+            @Override
+            protected Client buildClient(AuditConfiguration auditConfiguration, PublishConfiguration publishConfiguration)
+                    throws EventHubClientException {
+                auditCommonClientState = AuditCommonClientState.CONNECTING;
+                client = mock(Client.class);
+                return client;
+            }
+        };
 
         auditClientAsyncImpl.getEventMap().put("1", eventContainer_1);
         auditClientAsyncImpl.getEventQueue().offer(queueElement_1);
@@ -241,7 +315,15 @@ public class AuditClientAsyncImplTest {
     @Test
     public void handleAckNotAccepted_nothingShouldBeNotified() throws EventHubClientException, AuditException {
         TestHelper cb = new TestHelper();
-        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration));
+        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration)){
+            @Override
+            protected Client buildClient(AuditConfiguration auditConfiguration, PublishConfiguration publishConfiguration)
+                    throws EventHubClientException {
+                auditCommonClientState = AuditCommonClientState.CONNECTING;
+                client = mock(Client.class);
+                return client;
+            }
+        };
 
         auditClientAsyncImpl.getEventMap().put("1", eventContainer_1);
         auditClientAsyncImpl.getEventQueue().offer(queueElement_1);
@@ -257,7 +339,15 @@ public class AuditClientAsyncImplTest {
         TestHelper cb = new TestHelper();
         int retryCount = 0;
         long moreThanIntervalMillis = 4000;
-        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration));
+        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration)){
+            @Override
+            protected Client buildClient(AuditConfiguration auditConfiguration, PublishConfiguration publishConfiguration)
+                    throws EventHubClientException {
+                auditCommonClientState = AuditCommonClientState.CONNECTING;
+                client = mock(Client.class);
+                return client;
+            }
+        };
         auditClientAsyncImpl.setRetryCount(retryCount);
 
         auditClientAsyncImpl.getEventMap().put("1", eventContainer_1);
@@ -277,7 +367,15 @@ public class AuditClientAsyncImplTest {
         TestHelper cb = new TestHelper();
         int retryCount = 1;
         long moreThanIntervalMillis = 6000;
-        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration));
+        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration)){
+            @Override
+            protected Client buildClient(AuditConfiguration auditConfiguration, PublishConfiguration publishConfiguration)
+                    throws EventHubClientException {
+                auditCommonClientState = AuditCommonClientState.CONNECTING;
+                client = mock(Client.class);
+                return client;
+            }
+        };
         auditClientAsyncImpl.setRetryCount(retryCount);
 
         auditClientAsyncImpl.getEventMap().put("1", eventContainer_1);
@@ -298,7 +396,15 @@ public class AuditClientAsyncImplTest {
         int moreThanMaxRetry = 6000;
         TestHelper cb = new TestHelper();
         int retryCount = 1;
-        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration));
+        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration)){
+            @Override
+            protected Client buildClient(AuditConfiguration auditConfiguration, PublishConfiguration publishConfiguration)
+                    throws EventHubClientException {
+                auditCommonClientState = AuditCommonClientState.CONNECTING;
+                client = mock(Client.class);
+                return client;
+            }
+        };
        auditClientAsyncImpl.setRetryCount(retryCount);
         ValidatorService validatorService = mock(ValidatorService.class);
         auditClientAsyncImpl.setValidatorService(validatorService);
@@ -325,7 +431,15 @@ public class AuditClientAsyncImplTest {
     public void handleAckNotAccepted_noAckIsObtained_defaultIsReturned() throws EventHubClientException, AuditException, InterruptedException {
         TestHelper cb = new TestHelper();
         long moreThanIntervalMillis = 2500;
-        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration));
+        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration)){
+            @Override
+            protected Client buildClient(AuditConfiguration auditConfiguration, PublishConfiguration publishConfiguration)
+                    throws EventHubClientException {
+                auditCommonClientState = AuditCommonClientState.CONNECTING;
+                client = mock(Client.class);
+                return client;
+            }
+        };
         int retryCount = 0;
         auditClientAsyncImpl.setRetryCount(retryCount);
         auditClientAsyncImpl.setStateAndNotify(AuditCommonClientState.DISCONNECTED);
@@ -342,7 +456,15 @@ public class AuditClientAsyncImplTest {
     @Test
     public void testIncrementRetryCountAndSend_retryCountUnderMaximumTest_retryShouldBeAttempted() throws EventHubClientException, AuditException {
         TestHelper cb = new TestHelper();
-        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration));
+        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration)){
+            @Override
+            protected Client buildClient(AuditConfiguration auditConfiguration, PublishConfiguration publishConfiguration)
+                    throws EventHubClientException {
+                auditCommonClientState = AuditCommonClientState.CONNECTING;
+                client = mock(Client.class);
+                return client;
+            }
+        };
         auditClientAsyncImpl.setQueueSize(queueSize);
         auditClientAsyncImpl.setOm(om);
         auditClientAsyncImpl.setRetryCount(3);
@@ -362,7 +484,15 @@ public class AuditClientAsyncImplTest {
     @Test
     public void incrementRetryCountAndSend_eventReachedMaxRetry_eventIsReturnedInListToRemove() throws EventHubClientException, AuditException {
         TestHelper cb = new TestHelper();
-        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration));
+        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration)){
+            @Override
+            protected Client buildClient(AuditConfiguration auditConfiguration, PublishConfiguration publishConfiguration)
+                    throws EventHubClientException {
+                auditCommonClientState = AuditCommonClientState.CONNECTING;
+                client = mock(Client.class);
+                return client;
+            }
+        };
         auditClientAsyncImpl.setQueueSize(queueSize);
         auditClientAsyncImpl.setOm(om);
         int retryCount = 2;
@@ -383,7 +513,15 @@ public class AuditClientAsyncImplTest {
     @Test
     public void incrementRetryCountAndSend_EventIsNotInMap_eventIsRemovedFromMap() throws EventHubClientException, AuditException {
         TestHelper cb = new TestHelper();
-        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration));
+        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration)){
+            @Override
+            protected Client buildClient(AuditConfiguration auditConfiguration, PublishConfiguration publishConfiguration)
+                    throws EventHubClientException {
+                auditCommonClientState = AuditCommonClientState.CONNECTING;
+                client = mock(Client.class);
+                return client;
+            }
+        };
         auditClientAsyncImpl.setQueueSize(queueSize);
         auditClientAsyncImpl.setOm(om);
         auditClientAsyncImpl.setRetryCount(2);
@@ -409,7 +547,15 @@ public class AuditClientAsyncImplTest {
     public void handleNoAckTest() throws EventHubClientException, AuditException {
         TestHelper cb = new TestHelper();
         long noAckLimit = 5000;
-        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration));
+        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration)){
+            @Override
+            protected Client buildClient(AuditConfiguration auditConfiguration, PublishConfiguration publishConfiguration)
+                    throws EventHubClientException {
+                auditCommonClientState = AuditCommonClientState.CONNECTING;
+                client = mock(Client.class);
+                return client;
+            }
+        };
         auditClientAsyncImpl.setQueueSize(queueSize);
         auditClientAsyncImpl.setNoAckLimit(noAckLimit);
         auditClientAsyncImpl.setOm(om);
@@ -463,7 +609,15 @@ public class AuditClientAsyncImplTest {
     public void handleNoAckForOneMessageTest() throws EventHubClientException, AuditException {
         TestHelper cb = new TestHelper();
         long noAckLimit = 5000;
-        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration));
+        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration)){
+            @Override
+            protected Client buildClient(AuditConfiguration auditConfiguration, PublishConfiguration publishConfiguration)
+                    throws EventHubClientException {
+                auditCommonClientState = AuditCommonClientState.CONNECTING;
+                client = mock(Client.class);
+                return client;
+            }
+        };
         auditClientAsyncImpl.setQueueSize(queueSize);
         auditClientAsyncImpl.setNoAckLimit(noAckLimit);
         auditClientAsyncImpl.setOm(om);
@@ -496,7 +650,15 @@ public class AuditClientAsyncImplTest {
     public void handleNoAckForTwoMessages_noMessageShouldBeResent() throws EventHubClientException, AuditException {
         TestHelper cb = new TestHelper();
         long noAckLimit = 5000;
-        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration));
+        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration)){
+            @Override
+            protected Client buildClient(AuditConfiguration auditConfiguration, PublishConfiguration publishConfiguration)
+                    throws EventHubClientException {
+                auditCommonClientState = AuditCommonClientState.CONNECTING;
+                client = mock(Client.class);
+                return client;
+            }
+        };
         auditClientAsyncImpl.setQueueSize(queueSize);
         auditClientAsyncImpl.setNoAckLimit(noAckLimit);
         auditClientAsyncImpl.setOm(om);
@@ -533,7 +695,15 @@ public class AuditClientAsyncImplTest {
     public void handleEventHubCallbackNoAcks_noAcksInList_noNotifications() throws EventHubClientException, AuditException {
         TestHelper cb = new TestHelper();
         long noAckLimit = 5000;
-        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration));
+        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration)){
+            @Override
+            protected Client buildClient(AuditConfiguration auditConfiguration, PublishConfiguration publishConfiguration)
+                    throws EventHubClientException {
+                auditCommonClientState = AuditCommonClientState.CONNECTING;
+                client = mock(Client.class);
+                return client;
+            }
+        };
         auditClientAsyncImpl.setQueueSize(queueSize);
         auditClientAsyncImpl.setNoAckLimit(noAckLimit);
         auditClientAsyncImpl.setOm(om);
@@ -549,7 +719,15 @@ public class AuditClientAsyncImplTest {
     public void handleEventHubCallbackThrowableTest() throws EventHubClientException, AuditException {
         TestHelper cb = new TestHelper();
         long noAckLimit = 5000;
-        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration));
+        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration)){
+            @Override
+            protected Client buildClient(AuditConfiguration auditConfiguration, PublishConfiguration publishConfiguration)
+                    throws EventHubClientException {
+                auditCommonClientState = AuditCommonClientState.CONNECTING;
+                client = mock(Client.class);
+                return client;
+            }
+        };
         auditClientAsyncImpl.setQueueSize(queueSize);
         auditClientAsyncImpl.setNoAckLimit(noAckLimit);
         auditClientAsyncImpl.setOm(om);
@@ -566,7 +744,15 @@ public class AuditClientAsyncImplTest {
     public void handleEventHubCallbackThrowablePreConditionTest() throws EventHubClientException, AuditException {
         TestHelper cb = new TestHelper();
         long noAckLimit = 5000;
-        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration));
+        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration)){
+            @Override
+            protected Client buildClient(AuditConfiguration auditConfiguration, PublishConfiguration publishConfiguration)
+                    throws EventHubClientException {
+                auditCommonClientState = AuditCommonClientState.CONNECTING;
+                client = mock(Client.class);
+                return client;
+            }
+        };
         auditClientAsyncImpl.setQueueSize(queueSize);
         auditClientAsyncImpl.setNoAckLimit(noAckLimit);
         auditClientAsyncImpl.setOm(om);
@@ -583,7 +769,15 @@ public class AuditClientAsyncImplTest {
         int numberOfEvents = 1000;
         long noAckLimit = 2000;
         TestHelper cb = new TestHelper();
-        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration));
+        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration)){
+            @Override
+            protected Client buildClient(AuditConfiguration auditConfiguration, PublishConfiguration publishConfiguration)
+                    throws EventHubClientException {
+                auditCommonClientState = AuditCommonClientState.CONNECTING;
+                client = mock(Client.class);
+                return client;
+            }
+        };
         auditClientAsyncImpl.setQueueSize(queueSize);
         auditClientAsyncImpl.setNoAckLimit(noAckLimit);
         auditClientAsyncImpl.setOm(om);
@@ -629,7 +823,15 @@ public class AuditClientAsyncImplTest {
     @Test
     public void testLimitQueue_eventsRetryMaxedOut_eventsAreListedToBeRemoved() throws InterruptedException, EventHubClientException, AuditException {
         TestHelper cb = new TestHelper();
-        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration));
+        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration)){
+            @Override
+            protected Client buildClient(AuditConfiguration auditConfiguration, PublishConfiguration publishConfiguration)
+                    throws EventHubClientException {
+                auditCommonClientState = AuditCommonClientState.CONNECTING;
+                client = mock(Client.class);
+                return client;
+            }
+        };
         //AuditClientAsync auditClientAsync = Mockito.spy(auditClientAsyncReal);
         auditClientAsyncImpl.setNoAckLimit(50);
         auditClientAsyncImpl.setBulkSize(10);
@@ -660,7 +862,15 @@ public class AuditClientAsyncImplTest {
     @Test
     public void testLimitQueue_eventsRetryIsNotMaxedOut_eventsAreSent() throws InterruptedException, EventHubClientException, AuditException {
         TestHelper cb = new TestHelper();
-        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration));
+        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration)){
+            @Override
+            protected Client buildClient(AuditConfiguration auditConfiguration, PublishConfiguration publishConfiguration)
+                    throws EventHubClientException {
+                auditCommonClientState = AuditCommonClientState.CONNECTING;
+                client = mock(Client.class);
+                return client;
+            }
+        };
         //AuditClientAsync auditClientAsync = Mockito.spy(auditClientAsyncReal);
         auditClientAsyncImpl.setNoAckLimit(50);
         auditClientAsyncImpl.setBulkSize(10);
@@ -692,7 +902,15 @@ public class AuditClientAsyncImplTest {
     @Test
     public void reconnectClientTest() throws EventHubClientException, AuditException {
         TestHelper cb = new TestHelper();
-        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration));
+        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration)){
+            @Override
+            protected Client buildClient(AuditConfiguration auditConfiguration, PublishConfiguration publishConfiguration)
+                    throws EventHubClientException {
+                auditCommonClientState = AuditCommonClientState.CONNECTING;
+                client = mock(Client.class);
+                return client;
+            }
+        };
         Client client = mock(Client.class);
         auditClientAsyncImpl.setClient(client);
         auditClientAsyncImpl.reconnect();
@@ -703,7 +921,15 @@ public class AuditClientAsyncImplTest {
     @Test(expected = IllegalStateException.class)
     public void testReconnectClient_clientIsShutdown_throws() throws EventHubClientException, AuditException {
         TestHelper cb = new TestHelper();
-        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration));
+        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration)){
+            @Override
+            protected Client buildClient(AuditConfiguration auditConfiguration, PublishConfiguration publishConfiguration)
+                    throws EventHubClientException {
+                auditCommonClientState = AuditCommonClientState.CONNECTING;
+                client = mock(Client.class);
+                return client;
+            }
+        };
         auditClientAsyncImpl.shutdown();
         auditClientAsyncImpl.reconnect();
 
@@ -712,7 +938,15 @@ public class AuditClientAsyncImplTest {
     @Test
     public void TestTrace_traceHandlerIsNull_nothingShouldHappen() throws EventHubClientException, AuditException {
         TestHelper cb = new TestHelper();
-        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandleEmptyImpl());
+        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandleEmptyImpl()){
+            @Override
+            protected Client buildClient(AuditConfiguration auditConfiguration, PublishConfiguration publishConfiguration)
+                    throws EventHubClientException {
+                auditCommonClientState = AuditCommonClientState.CONNECTING;
+                client = mock(Client.class);
+                return client;
+            }
+        };
         auditClientAsyncImpl.trace();
         auditClientAsyncImpl.sendTracingMessage();
     }
@@ -721,7 +955,15 @@ public class AuditClientAsyncImplTest {
     public void testAudit_auditClientIsDisconnected_shouldNotFlushData() throws AuditException, EventHubClientException {
         int morethanMaxRetry = 2500;
         TestHelper cb = new TestHelper();
-        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration));
+        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration)){
+            @Override
+            protected Client buildClient(AuditConfiguration auditConfiguration, PublishConfiguration publishConfiguration)
+                    throws EventHubClientException {
+                auditCommonClientState = AuditCommonClientState.CONNECTING;
+                client = mock(Client.class);
+                return client;
+            }
+        };
         Client client = mock(Client.class);
         ValidatorService validatorService = mock(ValidatorService.class);
         auditClientAsyncImpl.setClient(client);
@@ -745,7 +987,15 @@ public class AuditClientAsyncImplTest {
     public void testAudit_auditClientIsConnected_shouldFlushData() throws AuditException, EventHubClientException {
         long morethanMaxRetry = 4000;
         TestHelper cb = new TestHelper();
-        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration));
+        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration)){
+            @Override
+            protected Client buildClient(AuditConfiguration auditConfiguration, PublishConfiguration publishConfiguration)
+                    throws EventHubClientException {
+                auditCommonClientState = AuditCommonClientState.CONNECTING;
+                client = mock(Client.class);
+                return client;
+            }
+        };
         Client client = mock(Client.class);
         ValidatorService validatorService = mock(ValidatorService.class);
         auditClientAsyncImpl.setClient(client);
@@ -874,7 +1124,15 @@ public class AuditClientAsyncImplTest {
     public void reconnectStrategyTest() throws AuditException, EventHubClientException {
         goodConfiguration.setReconnectMode(ReconnectMode.AUTOMATIC);
         TestHelper cb = new TestHelper();
-        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration));
+        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration)){
+            @Override
+            protected Client buildClient(AuditConfiguration auditConfiguration, PublishConfiguration publishConfiguration)
+                    throws EventHubClientException {
+                auditCommonClientState = AuditCommonClientState.CONNECTING;
+                client = mock(Client.class);
+                return client;
+            }
+        };
         assertThat(auditClientAsyncImpl.getReconnectEngine(), is(instanceOf(ExponentialReconnectStrategy.class)));
     }
 
@@ -898,7 +1156,15 @@ public class AuditClientAsyncImplTest {
     private void reconnectAlgoTest(int numOfMessage, int delayBetweenMessages) throws EventHubClientException, AuditException, InterruptedException {
         goodConfiguration.setReconnectMode(ReconnectMode.AUTOMATIC);
         TestHelper cb = new TestHelper();
-        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration));
+        AuditClientAsyncImpl auditClientAsyncImpl = new AuditClientAsyncImpl(goodConfiguration, cb, new TracingHandlerImpl(goodConfiguration)){
+            @Override
+            protected Client buildClient(AuditConfiguration auditConfiguration, PublishConfiguration publishConfiguration)
+                    throws EventHubClientException {
+                auditCommonClientState = AuditCommonClientState.CONNECTING;
+                client = mock(Client.class);
+                return client;
+            }
+        };
 
         Client client = mock(Client.class);
         ValidatorService validatorService = mock(ValidatorService.class);
