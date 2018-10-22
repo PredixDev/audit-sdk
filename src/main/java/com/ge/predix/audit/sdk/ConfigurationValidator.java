@@ -9,6 +9,6 @@ import com.ge.predix.audit.sdk.exception.AuditException;
  */
 public interface ConfigurationValidator {
 
-    void validateAuditConfiguration(final AuditConfiguration configuration, final AuditClientType auditClientType) throws AuditException;
+    void validateAuditConfiguration(final AuditConfiguration configuration) throws AuditException;
     void validateConfiguration(final RoutingAuditConfiguration routingAuditConfiguration) throws AuditException;
 }

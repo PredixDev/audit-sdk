@@ -37,25 +37,11 @@ public class AuditEventsConverterTest {
                 .correlationId(FAKE)
                 .build();
 
-        AuditEventExtended extended = auditEventsConverter.extend(eventV2);
-        assertThat(extended.getClass(), is(AuditEventV2Extended.class));
+        AuditEvent extended = auditEventsConverter.extend(eventV2);
+        assertThat(extended.getClass(), is(AuditEventV2.class));
+        assertThat(((AuditEventV2)extended).getAppName(), is(APP_NAME));
+        assertEquals(eventV2, extended);
 
-        AuditEventV2Extended auditEventV2Extended = new AuditEventV2Extended(eventV2, APP_NAME);
-        assertEquals(auditEventV2Extended, extended);
-        String appNameProperty = "appName";
-        String eventV2Str = objectMapper.writeValueAsString(eventV2);
-        assertFalse(eventV2Str.contains(APP_NAME));
-        assertFalse(eventV2Str.contains(appNameProperty));
-
-        String extendedEventStr = objectMapper.writeValueAsString(extended);
-        assertTrue(extendedEventStr.contains(appNameProperty));
-        assertTrue(extendedEventStr.contains(APP_NAME));
-
-        assertTrue(extendedEventStr.contains(APP_NAME));
-        assertTrue(extendedEventStr.contains(eventV2Str.replace("\"}", "\"")));
-
-        assertTrue(eventV2.equals(extended));
-        assertTrue(extended.equals(eventV2));
     }
 
     @Test
@@ -71,9 +57,6 @@ public class AuditEventsConverterTest {
         AuditEvent event = new AuditEvent() {
             @Override
             public int getVersion() { return -200; }
-
-            @Override
-            public void setMessageId(String messageId) { }
 
             @Override
             public String getMessageId() { return FAKE; }

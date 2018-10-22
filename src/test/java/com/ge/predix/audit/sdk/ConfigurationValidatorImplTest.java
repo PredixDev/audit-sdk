@@ -8,12 +8,8 @@ import org.junit.Test;
 /**
  * Created by 212582776 on 2/20/2018.
  */
-public class ConfigurationValidatorWithDeprecatedTypeSupportTest {
+public class ConfigurationValidatorImplTest {
 
-
-
-    private static AuditConfiguration validSyncConfiguration;
-    private static AuditConfiguration validAsyncConfiguration;
     private static AuditConfiguration invalidRetryIntervalConfiguration;
     private static AuditConfiguration invalidRetryValueConfiguration;
     private static AuditConfiguration invalidCacheSizeConfiguration;
@@ -22,19 +18,6 @@ public class ConfigurationValidatorWithDeprecatedTypeSupportTest {
     @Before
     public void init() {
 
-        validSyncConfiguration = AuditConfiguration.builder()
-                .ehubHost("localhost/eh")
-                .ehubPort(443)
-                .ehubZoneId("zoneId")
-                .uaaClientId("uaa")
-                .uaaClientSecret("secret")
-                .uaaUrl("http://localhost:443/uaa")
-                .tracingInterval(300)
-                .tracingUrl("http://localhost:443/tracing")
-                .tracingToken("token")
-                .bulkMode(false)
-                .clientType(AuditClientType.SYNC)
-                .build();
 
         validSyncConfigurationNoType = AuditConfiguration.builder()
                 .ehubHost("localhost/eh")
@@ -49,19 +32,6 @@ public class ConfigurationValidatorWithDeprecatedTypeSupportTest {
                 .bulkMode(false)
                 .build();
 
-        validAsyncConfiguration = AuditConfiguration.builder()
-                .ehubHost("localhost/eh")
-                .ehubPort(443)
-                .ehubZoneId("zoneId")
-                .uaaClientId("uaa")
-                .uaaClientSecret("secret")
-                .uaaUrl("http://localhost:443/uaa")
-                .tracingInterval(300)
-                .tracingUrl("http://localhost:443/tracing")
-                .tracingToken("token")
-                .bulkMode(false)
-                .clientType(AuditClientType.ASYNC)
-                .build();
 
         invalidRetryIntervalConfiguration = AuditConfiguration.builder()
                 .ehubHost("localhost/eh")
@@ -124,33 +94,22 @@ public class ConfigurationValidatorWithDeprecatedTypeSupportTest {
 
     @Test(expected = AuditException.class)
     public void validateAuditConfiguration_invalidCacheSize_throws() throws Exception {
-    ConfigurationValidatorFactory.getConfigurationValidator().validateAuditConfiguration(invalidCacheSizeConfiguration, AuditClientType.ASYNC);
+    ConfigurationValidatorFactory.getConfigurationValidator().validateAuditConfiguration(invalidCacheSizeConfiguration);
     }
 
     @Test(expected = AuditException.class)
     public void validateAuditConfiguration_invalidInterval_throws() throws Exception {
-        ConfigurationValidatorFactory.getConfigurationValidator().validateAuditConfiguration(invalidRetryIntervalConfiguration, AuditClientType.ASYNC);
+        ConfigurationValidatorFactory.getConfigurationValidator().validateAuditConfiguration(invalidRetryIntervalConfiguration);
     }
 
     @Test(expected = AuditException.class)
     public void validateAuditConfiguration_invalidInvalidRetryCount_throws() throws Exception {
-        ConfigurationValidatorFactory.getConfigurationValidator().validateAuditConfiguration(invalidRetryValueConfiguration, AuditClientType.ASYNC);
+        ConfigurationValidatorFactory.getConfigurationValidator().validateAuditConfiguration(invalidRetryValueConfiguration);
     }
-
-    @Test(expected = AuditException.class)
-    public void validateAuditConfiguration_invalidSyncAuditType_throws() throws Exception {
-        ConfigurationValidatorFactory.getConfigurationValidator().validateAuditConfiguration(validSyncConfiguration, AuditClientType.ASYNC);
-    }
-
-    @Test(expected = AuditException.class)
-    public void validateAuditConfiguration_invalidAsyncAuditType_throws() throws Exception {
-        ConfigurationValidatorFactory.getConfigurationValidator().validateAuditConfiguration(validAsyncConfiguration, AuditClientType.SYNC);
-    }
-
 
     @Test
     public void validateAuditConfiguration_noType() throws Exception{
-        ConfigurationValidatorFactory.getConfigurationValidator().validateAuditConfiguration(validSyncConfigurationNoType, AuditClientType.SYNC);
+        ConfigurationValidatorFactory.getConfigurationValidator().validateAuditConfiguration(validSyncConfigurationNoType);
     }
 
 }

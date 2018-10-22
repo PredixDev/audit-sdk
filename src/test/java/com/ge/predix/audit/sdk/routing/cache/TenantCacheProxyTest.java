@@ -1,9 +1,6 @@
 package com.ge.predix.audit.sdk.routing.cache;
 
-import com.ge.predix.audit.sdk.AuditClientAsyncImpl;
-import com.ge.predix.audit.sdk.AuditClientState;
-import com.ge.predix.audit.sdk.CommonClientInterface;
-import com.ge.predix.audit.sdk.FailReport;
+import com.ge.predix.audit.sdk.*;
 import com.ge.predix.audit.sdk.config.*;
 import com.ge.predix.audit.sdk.config.vcap.AuditServiceCredentials;
 import com.ge.predix.audit.sdk.exception.AuditException;
@@ -23,6 +20,7 @@ import com.ge.predix.audit.sdk.routing.tms.*;
 import com.ge.predix.eventhub.EventHubClientException;
 import com.google.common.util.concurrent.MoreExecutors;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -33,6 +31,7 @@ import static com.ge.predix.audit.sdk.routing.RoutingTestHelper.generateHolders;
 import static com.ge.predix.audit.sdk.routing.RoutingTestHelper.generateToken;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.*;
@@ -204,7 +203,7 @@ public class TenantCacheProxyTest {
         when(auditTmsClient.fetchServiceInstance(tenantId)).thenReturn(Optional.of(serviceInstance));
         factory.createClient(tenantId);
         AuditAsyncClientHolder holder = dedicatedClients.get(tenantId).orElseThrow(()->new RuntimeException("holder should exists!"));
-        holder.getClient().getCallback().onFailure(FailReport.AUTHENTICATION_FAILURE, "tokenIsBad");
+        holder.getClient().getCallback().onClientError(ClientErrorCode.AUTHENTICATION_FAILURE, "tokenIsBad");
 
         verify(auditTokenServiceClient, times(2)).getToken(holder.getTenantUuid());
         assertTrue(sharedClients.getAll().isEmpty());
@@ -241,7 +240,7 @@ public class TenantCacheProxyTest {
         when(auditTmsClient.fetchServiceInstance(tenantId)).thenReturn(Optional.of(serviceInstance));
         factory.createClient(tenantId);
         AuditAsyncClientHolder holder = dedicatedClients.get(tenantId).orElseThrow(()->new RuntimeException("holder should exists!"));
-        holder.getClient().getCallback().onFailure(FailReport.AUTHENTICATION_FAILURE, "tokenIsBad");
+        holder.getClient().getCallback().onClientError(ClientErrorCode.AUTHENTICATION_FAILURE, "tokenIsBad");
 
         verify(auditTokenServiceClient, times(2)).getToken(holder.getTenantUuid());
         assertTrue(sharedClients.getAll().isEmpty());
@@ -375,6 +374,7 @@ public class TenantCacheProxyTest {
                 .publisherType(AuditEnums.PublisherType.APP_SERVICE)
                 .build();
 
+        assertEquals(AuditClientState.CONNECTED, factory.getSharedClient().getAuditClientState());
         factory.getSharedClient().audit(sharedEvent);
         assertEquals(AuditClientState.DISCONNECTED, factory.getSharedClient().getAuditClientState());
 
@@ -424,7 +424,7 @@ public class TenantCacheProxyTest {
         assertEquals(dedicated, testHelper.getKpis(tenant).getLastFailureEvent());
         assertEquals(1, testHelper.getKpis(tenant).getFailureCount().get());
     }
-
+    
     @Test
     public void gracefulShutdown() throws Exception {
         String tenant = "tnt";

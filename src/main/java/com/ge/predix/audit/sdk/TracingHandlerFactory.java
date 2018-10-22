@@ -8,7 +8,7 @@ import com.ge.predix.audit.sdk.exception.AuditException;
  */
 public class TracingHandlerFactory {
 
-    public static TracingHandler newTracingHandler(AuditConfiguration auditConfiguration) throws AuditException {
-        return auditConfiguration.isTraceEnabled()? new TracingHandlerImpl(auditConfiguration) : new TracingHandleEmptyImpl();
+    public static TracingHandler newTracingHandler(AuditConfiguration auditConfiguration, String clientType) throws AuditException {
+        return auditConfiguration.isTraceEnabled()? new TracingHandlerImpl(auditConfiguration, clientType) : new TracingHandleEmptyImpl();
     }
 }

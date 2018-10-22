@@ -5,6 +5,7 @@ import com.ge.predix.audit.sdk.config.vcap.VcapLoaderServiceImpl;
 import com.ge.predix.audit.sdk.config.vcap.VcapServices;
 import com.ge.predix.audit.sdk.exception.VcapLoadException;
 import com.ge.predix.audit.sdk.util.EnvUtils;
+import com.google.gson.JsonSyntaxException;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -167,8 +168,7 @@ public class VcapLoaderServiceTest {
         assertNull(configFromVcap.getAuthToken());
         assertThat(configFromVcap.getRetryIntervalMillis(),is(AuditConfiguration.DEFAULT_RETRY_INTERVAL_MILLIS));
         assertThat(configFromVcap.getMaxRetryCount(),is(AuditConfiguration.DEFAULT_RETRY_COUNT));
-        assertThat(configFromVcap.getReconnectMode(),is(ReconnectMode.MANUAL));
-        assertNull(configFromVcap.getClientType());
+        assertThat(configFromVcap.getReconnectMode(),is(ReconnectMode.AUTOMATIC));
     }
 
     @Test

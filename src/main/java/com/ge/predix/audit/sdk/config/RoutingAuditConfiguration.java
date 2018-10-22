@@ -18,48 +18,57 @@ import javax.validation.constraints.NotNull;
  */
 //TODO add documentation for limitation
 @Getter
-@Builder
+@Builder(builderClassName = "RoutingAuditConfigurationBuilder")
 @EqualsAndHashCode
 @ToString
 public class RoutingAuditConfiguration {
 
-    @NotNull @Valid private final SystemConfig systemConfig;
-    @NotNull @Valid private final AppNameConfig appNameConfig;
-    @NotNull @Valid private final SharedAuditConfig sharedAuditConfig;
-    @NotNull @Valid private final TenantAuditConfig tenantAuditConfig;
-    @NotNull @Valid private final RoutingResourceConfig routingResourceConfig;
+    @NotNull
+    @Valid
+    private final SystemConfig systemConfig;
+    @NotNull
+    @Valid
+    private final AppNameConfig appNameConfig;
+    @NotNull
+    @Valid
+    private final SharedAuditConfig sharedAuditConfig;
+    @NotNull
+    @Valid
+    private final TenantAuditConfig tenantAuditConfig;
+    @NotNull
+    @Valid
+    private final RoutingResourceConfig routingResourceConfig;
 
-    public RoutingAuditConfiguration(@NotNull @Valid SystemConfig systemConfig,
-                                     @NotNull @Valid AppNameConfig appNameConfig,
-                                     @NotNull @Valid SharedAuditConfig sharedAuditConfig,
-                                     @NotNull @Valid TenantAuditConfig tenantAuditConfig,
-                                     @NotNull @Valid RoutingResourceConfig routingResourceConfig) throws RoutingAuditException {
+    RoutingAuditConfiguration(@NotNull @Valid SystemConfig systemConfig,
+                              @NotNull @Valid AppNameConfig appNameConfig,
+                              @NotNull @Valid SharedAuditConfig sharedAuditConfig,
+                              @NotNull @Valid TenantAuditConfig tenantAuditConfig,
+                              @NotNull @Valid RoutingResourceConfig routingResourceConfig) throws RoutingAuditException {
         this.systemConfig = systemConfig;
         this.appNameConfig = appNameConfig;
         this.sharedAuditConfig = sharedAuditConfig;
         this.tenantAuditConfig = tenantAuditConfig;
-        this.routingResourceConfig = routingResourceConfig != null ? routingResourceConfig : RoutingResourceConfig.builder().build();
-        validateConfig();
+        this.routingResourceConfig = routingResourceConfig;
     }
 
-    public RoutingAuditConfiguration(@NotNull @Valid SystemConfig systemConfig,
-                                     @NotNull @Valid AppNameConfig appNameConfig,
-                                     @NotNull @Valid SharedAuditConfig sharedAuditConfig,
-                                     @NotNull @Valid TenantAuditConfig tenantAuditConfig) throws RoutingAuditException {
-        this.systemConfig = systemConfig;
-        this.appNameConfig = appNameConfig;
-        this.sharedAuditConfig = sharedAuditConfig;
-        this.tenantAuditConfig = tenantAuditConfig;
-        this.routingResourceConfig = RoutingResourceConfig.builder().build();
-        validateConfig();
+    public static class RoutingAuditConfigurationBuilder {
+        private RoutingResourceConfig routingResourceConfig;
+        private TenantAuditConfig tenantAuditConfig;
+
+        public RoutingAuditConfiguration build() throws RoutingAuditException {
+            this.routingResourceConfig = (this.routingResourceConfig == null) ? RoutingResourceConfig.builder().build() : this.routingResourceConfig;
+            this.tenantAuditConfig = (this.tenantAuditConfig == null) ? TenantAuditConfig.builder().build() : this.tenantAuditConfig;
+            return new RoutingAuditConfiguration(this.systemConfig, this.appNameConfig, this.sharedAuditConfig, this.tenantAuditConfig, this.routingResourceConfig)
+                    .validate();
+        }
     }
 
-    private void validateConfig() {
+    private RoutingAuditConfiguration validate() {
         try {
             ConfigurationValidatorFactory.getConfigurationValidator().validateConfiguration(this);
+            return this;
         } catch (AuditException e) {
             throw new RoutingAuditException(e);
         }
     }
-
 }

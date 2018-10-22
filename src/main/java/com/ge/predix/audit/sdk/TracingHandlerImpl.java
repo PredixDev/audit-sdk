@@ -10,8 +10,8 @@ import com.ge.predix.audit.sdk.message.AuditTracingEvent;
 import com.ge.predix.audit.sdk.message.tracing.*;
 import com.ge.predix.audit.sdk.util.CustomLogger;
 import com.ge.predix.audit.sdk.util.LoggerUtils;
-import com.ge.predix.eventhub.Ack;
-import com.ge.predix.eventhub.AckStatus;
+import com.ge.predix.eventhub.stub.Ack;
+import com.ge.predix.eventhub.stub.AckStatus;
 
 import java.net.URISyntaxException;
 import java.util.Optional;
@@ -29,12 +29,14 @@ public class TracingHandlerImpl implements TracingHandler {
 
     private static CustomLogger log = LoggerUtils.getLogger(TracingHandlerImpl.class.getName());
     public final AuditConfiguration configuration;
-    private TracingMessageSender tracingMessageSender;
+    TracingMessageSender tracingMessageSender;
     protected AtomicReference<AuditTracingEvent> auditTracingEvent = new AtomicReference<>();
     private ObjectMapper om;
     private final String logPrefix;
+    private String clientType;
 
-    public TracingHandlerImpl(AuditConfiguration configuration) throws AuditException {
+    public TracingHandlerImpl(AuditConfiguration configuration, String clientType) throws AuditException {
+        this.clientType = clientType;
         this.configuration = configuration;
         this.tracingMessageSender  = buildTracingMessageSender();
         setAuditTracingEvent();
@@ -118,7 +120,6 @@ public class TracingHandlerImpl implements TracingHandler {
 
         String value;
         TracingMetaData tracingMetaData = TracingMetaData.builder()
-                .auditClientType(this.configuration.getClientType())
                 .bulkMode(this.configuration.getBulkMode())
                 .eventhubHost(this.configuration.getEhubHost())
                 .uaaUrl(this.configuration.getUaaUrl())
@@ -131,6 +132,7 @@ public class TracingHandlerImpl implements TracingHandler {
                 .retryInterval(this.configuration.getRetryIntervalMillis())
                 .cacheSize(this.configuration.getMaxNumberOfEventsInCache())
                 .authenticationMethod(this.configuration.getAuthenticationMethod())
+                .clientType(this.clientType)
                 .build();
         try {
             value = om.writeValueAsString(tracingMetaData);

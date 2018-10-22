@@ -1,11 +1,10 @@
 package com.ge.predix.audit.sdk.routing;
 
 import com.ge.predix.audit.sdk.CommonClientInterface;
-import com.ge.predix.audit.sdk.FailReport;
+import com.ge.predix.audit.sdk.FailCode;
 import com.ge.predix.audit.sdk.exception.AuditException;
 import com.ge.predix.audit.sdk.exception.TmsClientException;
 import com.ge.predix.audit.sdk.message.AuditEnums;
-import com.ge.predix.audit.sdk.message.AuditEventExtended;
 import com.ge.predix.audit.sdk.message.AuditEventV2;
 import com.ge.predix.audit.sdk.message.AuditEventsConverter;
 import com.ge.predix.audit.sdk.routing.cache.TenantCacheProxy;
@@ -48,9 +47,7 @@ public class RoutingAuditPublisherTest {
 
         auditEventV2RoutingAuditPublisher.auditToShared(Collections.singletonList(eventV2));
 
-
-        AuditEventExtended extended = converter.extend(eventV2);
-        verify(commonClientInterface).audit(Collections.singletonList(extended));
+        verify(commonClientInterface).audit(Collections.singletonList(eventV2));
     }
 
     @Test
@@ -69,9 +66,7 @@ public class RoutingAuditPublisherTest {
 
         auditEventV2RoutingAuditPublisher.auditToTenant(TENANT, Collections.singletonList(eventV2));
 
-
-        AuditEventExtended extended = converter.extend(eventV2);
-        verify(commonClientInterface).audit(Collections.singletonList(extended));
+        verify(commonClientInterface).audit(Collections.singletonList(eventV2));
     }
 
     @Test
@@ -87,7 +82,7 @@ public class RoutingAuditPublisherTest {
         auditEventV2RoutingAuditPublisher.auditToShared(Collections.singletonList(v2));
 
         verifyZeroInteractions(commonClientInterface);
-        assertEquals(FailReport.CLIENT_INITIALIZATION_ERROR, callback.getKpis(v2.getTenantUuid()).getLastFailureCode());
+        assertEquals(FailCode.CLIENT_INITIALIZATION_ERROR, callback.getKpis(v2.getTenantUuid()).getLastFailureCode());
     }
 
     @Test
@@ -103,7 +98,7 @@ public class RoutingAuditPublisherTest {
                 .build()));
 
         verifyZeroInteractions(commonClientInterface);
-        assertEquals(FailReport.CLIENT_INITIALIZATION_ERROR, callback.getKpis(TENANT).getLastFailureCode());
+        assertEquals(FailCode.CLIENT_INITIALIZATION_ERROR, callback.getKpis(TENANT).getLastFailureCode());
     }
 
     @Test

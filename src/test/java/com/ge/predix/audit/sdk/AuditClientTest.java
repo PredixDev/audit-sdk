@@ -3,24 +3,15 @@ package com.ge.predix.audit.sdk;
 import com.ge.predix.audit.sdk.config.AuditConfiguration;
 import com.ge.predix.audit.sdk.exception.AuditException;
 import com.ge.predix.eventhub.EventHubClientException;
-import org.junit.Assert;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
 
-import javax.validation.constraints.AssertTrue;
-
-import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
-import static org.mockito.Mockito.mock;
 
 /**
  * Created by Martin Saad on 2/13/2017.
  */
-@Ignore
 public class AuditClientTest {
 
     private static AuditConfiguration validConfiguration;
@@ -82,7 +73,6 @@ public class AuditClientTest {
                 .tracingUrl("http://localhost:443/tracing")
                 .tracingToken("token")
                 .bulkMode(false)
-                .clientType(AuditClientType.SYNC)
                 .build();
 
 
@@ -167,11 +157,6 @@ public class AuditClientTest {
     @Test (expected = AuditException.class)
     public void createClientWithNoConfigurationTest() throws EventHubClientException, AuditException {
        new AuditClient(null, cb);
-    }
-
-    @Test (expected = AuditException.class)
-    public void createClientWithSyncConfiguration_throws() throws EventHubClientException, AuditException {
-        new AuditClient(validSyncConfiguration, cb);
     }
 
     @Test

@@ -1,7 +1,6 @@
 package com.ge.predix.audit.sdk.config;
 
 
-import com.ge.predix.audit.sdk.AuditClientType;
 import com.ge.predix.audit.sdk.AuthenticationMethod;
 import lombok.*;
 import lombok.experimental.Accessors;
@@ -16,7 +15,6 @@ import javax.validation.constraints.Min;
 @Getter
 @EqualsAndHashCode
 @ToString
-@Setter
 public class AuditConfiguration extends AbstractAuditConfiguration {
 
     private String uaaUrl;
@@ -30,8 +28,6 @@ public class AuditConfiguration extends AbstractAuditConfiguration {
     private int maxNumberOfEventsInCache;
     private ReconnectMode reconnectMode;
     private String authToken;
-    @Deprecated
-    private AuditClientType clientType;
     @Setter(AccessLevel.NONE) //this is not exposed to the user. for internal use only
     private AuthenticationMethod authenticationMethod;
     private String tracingUrl;
@@ -44,7 +40,7 @@ public class AuditConfiguration extends AbstractAuditConfiguration {
                                String auditServiceName, String cfAppName, String spaceName,
                                int maxRetryCount, long retryIntervalMillis, int maxNumberOfEventsInCache,
                                ReconnectMode reconnectMode, boolean traceEnabled, String authToken,
-                               AuditClientType clientType, AuthenticationMethod authenticationMethod, String auditZoneId
+                               AuthenticationMethod authenticationMethod, String auditZoneId
     ) {
         super(bulkMode, tracingInterval, auditServiceName, spaceName, maxRetryCount, retryIntervalMillis, traceEnabled, cfAppName);
         this.tracingUrl = tracingUrl;
@@ -58,26 +54,9 @@ public class AuditConfiguration extends AbstractAuditConfiguration {
         this.reconnectMode = reconnectMode;
         this.maxNumberOfEventsInCache = maxNumberOfEventsInCache;
         this.authToken = authToken;
-        this.clientType = clientType;
         this.authenticationMethod = authenticationMethod;
         this.auditZoneId = auditZoneId;
 
-    }
-
-    @Deprecated
-    /**
-     * @deprecated  As of release 1.3.0, replaced by {@link #setCfAppName(String)} ()}
-     */
-    public void setAppName(String appName) {
-        setCfAppName(appName);
-    }
-
-    @Deprecated
-    /**
-     * @deprecated  As of release 1.3.0, replaced by {@link #getCfAppName()}  ()}
-     */
-    public String getAppName() {
-       return getCfAppName();
     }
 
     public static AuditConfigurationWithAuthTokenBuilder builderWithAuthToken(){
@@ -86,31 +65,6 @@ public class AuditConfiguration extends AbstractAuditConfiguration {
 
     public static AuditConfigurationBuilder builder(){
         return new AuditConfigurationBuilder();
-    }
-
-    public static AuditConfiguration fromConfiguration(AuditConfiguration auditConfiguration){
-        return  new AuditConfiguration(auditConfiguration.uaaUrl,
-                auditConfiguration.uaaClientId,
-                auditConfiguration.uaaClientSecret,
-                auditConfiguration.ehubZoneId,
-                auditConfiguration.ehubHost,
-                auditConfiguration.ehubPort,
-                auditConfiguration.getBulkMode(),
-                auditConfiguration.tracingUrl,
-                auditConfiguration.tracingToken,
-                auditConfiguration.getTracingInterval(),
-                auditConfiguration.getAuditServiceName(),
-                auditConfiguration.getCfAppName(),
-                auditConfiguration.getSpaceName(),
-                auditConfiguration.getMaxRetryCount(),
-                auditConfiguration.getRetryIntervalMillis(),
-                auditConfiguration.maxNumberOfEventsInCache,
-                auditConfiguration.reconnectMode,
-                auditConfiguration.isTraceEnabled(),
-                auditConfiguration.authToken,
-                auditConfiguration.clientType,
-                auditConfiguration.authenticationMethod,
-                auditConfiguration.auditZoneId);
     }
 
     /****************************** BUILDERS **************************/
@@ -129,17 +83,15 @@ public class AuditConfiguration extends AbstractAuditConfiguration {
         protected int maxRetryCount = DEFAULT_RETRY_COUNT;
         protected long retryIntervalMillis = DEFAULT_RETRY_INTERVAL_MILLIS;
         protected int maxNumberOfEventsInCache = DEFAULT_CACHE_SIZE;
-        protected ReconnectMode reconnectMode = ReconnectMode.MANUAL;
+        protected ReconnectMode reconnectMode = ReconnectMode.AUTOMATIC;
         protected boolean traceEnabled = false;
         protected AuthenticationMethod authenticationMethod = AuthenticationMethod.UAA_USER_PASS;
         protected String auditZoneId;
-        @Deprecated
-        protected AuditClientType clientType;
         protected BasicAuditBuilder(){
         }
 
         public AuditConfiguration build(){
-            return new AuditConfiguration(null,null,null,ehubZoneId,ehubHost,ehubPort,bulkMode,tracingUrl,tracingToken,tracingInterval,auditServiceName, cfAppName, spaceName,maxRetryCount,retryIntervalMillis,maxNumberOfEventsInCache,reconnectMode,traceEnabled,null,clientType, authenticationMethod, auditZoneId);
+            return new AuditConfiguration(null,null,null,ehubZoneId,ehubHost,ehubPort,bulkMode,tracingUrl,tracingToken,tracingInterval,auditServiceName, cfAppName, spaceName,maxRetryCount,retryIntervalMillis,maxNumberOfEventsInCache,reconnectMode,traceEnabled,null, authenticationMethod, auditZoneId);
         }
 
         public BasicAuditBuilder ehubUrl(String ehubUrl) throws IllegalArgumentException {
@@ -190,13 +142,6 @@ public class AuditConfiguration extends AbstractAuditConfiguration {
             this.auditServiceName = auditServiceName;
             return this;
         }
-        @Deprecated
-        /**
-         * @deprecated  As of release 1.3.0, replaced by {@link #cfAppName(String)} ()}
-         */
-        public AuditConfigurationWithAuthTokenBuilder appName(String cfAppName){
-            return cfAppName(cfAppName);
-        }
         public AuditConfigurationWithAuthTokenBuilder cfAppName(String cfAppName){
             this.cfAppName = cfAppName;
             return this;
@@ -229,12 +174,6 @@ public class AuditConfiguration extends AbstractAuditConfiguration {
             this.traceEnabled = traceEnabled;
             return this;
         }
-        @Deprecated
-        public AuditConfigurationWithAuthTokenBuilder clientType(AuditClientType clientType){
-            this.clientType = clientType;
-            return this;
-        }
-
         public AuditConfigurationWithAuthTokenBuilder ehubUrl(String ehubUrl) {
             super.ehubUrl(ehubUrl);
             return this;
@@ -291,13 +230,6 @@ public class AuditConfiguration extends AbstractAuditConfiguration {
             this.auditServiceName = auditServiceName;
             return this;
         }
-        @Deprecated
-        /**
-         * @deprecated  As of release 1.3.0, replaced by {@link #cfAppName(String)} ()}
-         */
-        public AuditConfigurationBuilder appName(String cfAppName){
-            return cfAppName(cfAppName);
-        }
         public AuditConfigurationBuilder cfAppName(String cfAppName){
             this.cfAppName = cfAppName;
             return this;
@@ -330,12 +262,6 @@ public class AuditConfiguration extends AbstractAuditConfiguration {
             this.traceEnabled = traceEnabled;
             return this;
         }
-        @Deprecated
-        public AuditConfigurationBuilder clientType(AuditClientType clientType){
-            this.clientType = clientType;
-            return this;
-        }
-
         public AuditConfigurationBuilder ehubUrl(String ehubUrl) {
             super.ehubUrl(ehubUrl);
             return this;

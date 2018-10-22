@@ -20,8 +20,7 @@ public class AuditConfigurationTest {
 
     @Test
     public void testBulkIsOff() {
-        AuditConfiguration config = AuditConfiguration.builder().build();
-        config.setBulkMode(false);
+        AuditConfiguration config = AuditConfiguration.builder().bulkMode(false).build();
         assertThat(config.getBulkMode(),is(false));
     }
 
@@ -31,7 +30,7 @@ public class AuditConfigurationTest {
         assertThat(config.getMaxNumberOfEventsInCache(),is(AuditConfiguration.DEFAULT_CACHE_SIZE));
         assertThat(config.getMaxRetryCount(),is(AuditConfiguration.DEFAULT_RETRY_COUNT));
         assertThat(config.getRetryIntervalMillis(),is(AuditConfiguration.DEFAULT_RETRY_INTERVAL_MILLIS));
-        assertThat(config.getReconnectMode(),is(ReconnectMode.MANUAL));
+        assertThat(config.getReconnectMode(),is(ReconnectMode.AUTOMATIC));
 
     }
 

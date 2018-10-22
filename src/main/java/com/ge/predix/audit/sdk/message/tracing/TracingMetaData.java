@@ -1,6 +1,5 @@
 package com.ge.predix.audit.sdk.message.tracing;
 
-import com.ge.predix.audit.sdk.AuditClientType;
 import com.ge.predix.audit.sdk.AuthenticationMethod;
 import com.ge.predix.audit.sdk.config.ReconnectMode;
 import lombok.AllArgsConstructor;
@@ -22,7 +21,6 @@ public class TracingMetaData implements Serializable{
     private String eventhubHost;
     private String uaaUrl;
     private boolean bulkMode;
-    private AuditClientType auditClientType;
     private String auditServiceName;
     private String spaceName;
     private String appName;
@@ -31,4 +29,5 @@ public class TracingMetaData implements Serializable{
     private int cacheSize;
     private ReconnectMode reconnectMode;
     private AuthenticationMethod authenticationMethod;
+    private String clientType;
 }

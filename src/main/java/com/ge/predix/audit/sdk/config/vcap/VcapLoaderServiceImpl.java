@@ -157,9 +157,9 @@ public class VcapLoaderServiceImpl implements VcapLoaderService {
                         .build())
                 .routingResourceConfig(getRoutingResourceConfig())
                 .build();
-        } catch (Exception e) {
-            throw new VcapLoadException(e);
-        }
+            } catch (RuntimeException e) {
+                throw new VcapLoadException(e);
+            }
     }
 
     public RoutingResourceConfig getRoutingResourceConfig() {
@@ -184,11 +184,11 @@ public class VcapLoaderServiceImpl implements VcapLoaderService {
     }
 
     @Override
-    public VcapApplication getApplicationFromVcap() throws VcapLoadException {
+    public VcapApplication getApplicationFromVcap() throws VcapLoadException{
         try {
             return gson.fromJson(vcapApplicationEnv, VcapApplication.class);
-        }catch (Throwable throwable){
-            throw new VcapLoadException(throwable.getMessage());
+        }catch(RuntimeException e){
+            throw new VcapLoadException(e);
         }
     }
 
@@ -223,21 +223,21 @@ public class VcapLoaderServiceImpl implements VcapLoaderService {
                     .auditZoneId(auditServiceCredentials.getAuditQueryApiScope().split("\\.")[2])
                     .spaceName(vcapApplication.getSpaceName());
             //handle optional params. if not set here, will be assigned with default values by the builder.
-            if(maxRetries != null) {
+            if (maxRetries != null) {
                 auditConfigurationBuilder.maxRetryCount(Integer.valueOf(maxRetries));
             }
-            if(retryIntervalMillis != null) {
+            if (retryIntervalMillis != null) {
                 auditConfigurationBuilder.retryIntervalMillis(Long.valueOf(retryIntervalMillis));
             }
-            if(maxCachedEvents != null){
+            if (maxCachedEvents != null) {
                 auditConfigurationBuilder.maxNumberOfEventsInCache(Integer.valueOf(maxCachedEvents));
             }
-            if(reconnectPolicy != null){
+            if (reconnectPolicy != null) {
                 auditConfigurationBuilder.reconnectMode(ReconnectMode.valueOf(reconnectPolicy));
             }
             return auditConfigurationBuilder.build();
-        }catch (Throwable t){
-            throw new VcapLoadException(t.getMessage());
+        }catch(RuntimeException e){
+            throw new VcapLoadException(e);
         }
     }
 

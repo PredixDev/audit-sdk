@@ -1,12 +1,17 @@
 package com.ge.predix.audit.sdk.message;
 
 
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import com.ge.predix.audit.sdk.exception.AuditValidationException;
 import com.ge.predix.audit.sdk.message.validator.Uuid;
+import com.ge.predix.audit.sdk.validator.ValidatorReport;
+import com.ge.predix.audit.sdk.validator.ValidatorServiceImpl;
 import lombok.*;
 import org.hibernate.validator.constraints.Length;
 
 import javax.validation.constraints.NotNull;
 import java.beans.ConstructorProperties;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -14,11 +19,9 @@ import java.util.UUID;
  * @author Igor {212579997}
  */
 
-@Builder(builderClassName = "AuditEventV2Builder")
-@Data
-@NoArgsConstructor
 @ToString
 @EqualsAndHashCode
+@Getter
 public class AuditEventV2 implements AuditEvent {
 
     private static final int VERSION_2 = 2;
@@ -27,6 +30,7 @@ public class AuditEventV2 implements AuditEvent {
     @Length(max = 36, message = "The field must be maximum 36 characters")
     @Uuid
     private String messageId;
+
 
     private int version = VERSION_2;
 
@@ -53,46 +57,28 @@ public class AuditEventV2 implements AuditEvent {
     @Length(max = 36, message = "The field must be maximum 36 characters")
     private String tenantUuid;
 
+    @Setter(value=AccessLevel.PACKAGE)
+    @Length(max = 100, message = "appName (origin) from TMS token must be maximum length of 100 characters")
+    private String appName;
 
+    @Builder(builderClassName = "AuditEventV2Builder")
+    @ConstructorProperties({"timestamp", "classifier", "publisherType", "categoryType", "eventType", "payload", "correlationId", "tenantUuid"})
+    AuditEventV2(long timestamp, @NotNull AuditEnums.Classifier classifier, @NotNull AuditEnums.PublisherType publisherType, @NotNull AuditEnums.CategoryType categoryType, @NotNull AuditEnums.EventType eventType, String payload, String correlationId, String tenantUuid) throws AuditValidationException {
 
-    @ConstructorProperties({"messageId", "version", "timestamp", "classifier", "publisherType", "categoryType", "eventType", "payload", "correlationId", "tenantUuid"})
-    public AuditEventV2(String messageId, int version, long timestamp, @NotNull AuditEnums.Classifier classifier, @NotNull AuditEnums.PublisherType publisherType, @NotNull AuditEnums.CategoryType categoryType, @NotNull AuditEnums.EventType eventType, String payload, String correlationId, String tenantUuid) {
-        if (classifier == null) {
-            throw new NullPointerException("classifier");
-        } else if (publisherType == null) {
-            throw new NullPointerException("publisherType");
-        } else if (categoryType == null) {
-            throw new NullPointerException("categoryType");
-        } else if (eventType == null) {
-            throw new NullPointerException("eventType");
-        } else {
-            if (messageId == null) {
-                this.messageId = UUID.randomUUID().toString();
-            } else {
-                this.messageId = messageId;
-            }
-            if (timestamp > 0) {
-                this.timestamp = timestamp;
-            } else {
-                this.timestamp = System.currentTimeMillis();
-            }
-            this.version = VERSION_2;
+        this.timestamp = timestamp;
+        this.classifier = classifier;
+        this.publisherType = publisherType;
+        this.categoryType = categoryType;
+        this.eventType = eventType;
+        this.payload = payload;
+        this.correlationId = correlationId;
+        this.tenantUuid = tenantUuid;
 
-            this.classifier = classifier;
-            this.publisherType = publisherType;
-            this.categoryType = categoryType;
-            this.eventType = eventType;
-            this.payload = payload;
-            this.correlationId = correlationId;
-            this.tenantUuid = tenantUuid;
-        }
     }
 
     @Override
     public AuditEventV2 clone() {
-        return AuditEventV2.builder()
-                .version(VERSION_2)
-                .messageId(messageId)
+        AuditEventV2 build = AuditEventV2.builder()
                 .timestamp(timestamp)
                 .classifier(classifier)
                 .publisherType(publisherType)
@@ -102,12 +88,40 @@ public class AuditEventV2 implements AuditEvent {
                 .correlationId(correlationId)
                 .tenantUuid(tenantUuid)
                 .build();
+        build.messageId = this.messageId;
+        build.appName = this.appName;
+        return build;
     }
 
+
     public static class AuditEventV2Builder {
-        private int version = VERSION_2;
-        private long timestamp = System.currentTimeMillis();
-        private String messageId = UUID.randomUUID().toString();
-        private AuditEnums.Classifier classifier = AuditEnums.Classifier.SUCCESS;
+
+        private long timestamp;
+        private AuditEnums.Classifier classifier;
+        private String messageId;
+        private AuditEnums.PublisherType publisherType;
+        private AuditEnums.CategoryType categoryType;
+        private AuditEnums.EventType eventType;
+        private String payload;
+        private String correlationId;
+        private String tenantUuid;
+
+        public AuditEventV2 build() throws AuditValidationException {
+
+            AuditEventV2 auditEventV2 = new AuditEventV2(timestamp, classifier, publisherType, categoryType, eventType, payload, correlationId, tenantUuid );
+            auditEventV2.messageId = UUID.randomUUID().toString();
+            if (auditEventV2.timestamp <= 0) {
+                auditEventV2.timestamp = System.currentTimeMillis();
+            }
+            if(auditEventV2.classifier == null){
+                auditEventV2.classifier = AuditEnums.Classifier.SUCCESS;
+            }
+
+            List<ValidatorReport> report = ValidatorServiceImpl.instance.validate(auditEventV2);
+            if (!report.isEmpty()) {
+                throw new AuditValidationException(report);
+            }
+            return auditEventV2;
+        }
     }
 }

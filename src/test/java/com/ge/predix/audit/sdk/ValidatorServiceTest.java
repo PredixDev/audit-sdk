@@ -1,24 +1,21 @@
 package com.ge.predix.audit.sdk;
 
-import com.ge.predix.audit.sdk.exception.VersioningException;
 import com.ge.predix.audit.sdk.message.AuditEnums;
 import com.ge.predix.audit.sdk.message.AuditEventV2;
 import com.ge.predix.audit.sdk.validator.ValidatorReport;
 import com.ge.predix.audit.sdk.validator.ValidatorServiceImpl;
 import org.junit.Before;
 import org.junit.Test;
-import org.owasp.html.HtmlPolicyBuilder;
 
 import javax.validation.ValidationException;
-import java.io.IOException;
+import java.lang.reflect.Field;
 import java.util.List;
 import java.util.UUID;
 import java.util.logging.Logger;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class ValidatorServiceTest {
     public static final String CORRELATION_ID = "correlationId";
@@ -42,68 +39,12 @@ public class ValidatorServiceTest {
 
     @Before
     public void setUp(){
-        validatorService = new ValidatorServiceImpl();
-        validatorService.setPolicy(new HtmlPolicyBuilder().allowStandardUrlProtocols().toFactory());
+        validatorService = ValidatorServiceImpl.instance;
     }
+
 
     @Test
-    public void extractAuditEventV2AndSanitizeGreenTest() throws IOException, ValidationException {
-        AuditEventV2 audit = AuditEventV2.builder()
-                .categoryType(AuditEnums.CategoryType.ADMINISTRATIONS)
-                .publisherType(AuditEnums.PublisherType.APP_SERVICE)
-                .eventType(AuditEnums.EventType.ACTION)
-                .payload("Hello world")
-                .build();
-        List<ValidatorReport> list = validatorService.sanitize(audit);
-        assertThat(validatorService.sanitize(audit).size(), is(0));
-    }
-
-    @Test
-    public void extractAuditEventV2AndWithEmptyPayloadSanitizeGreenTest() throws IOException, ValidationException {
-        AuditEventV2 audit = AuditEventV2.builder()
-                .categoryType(AuditEnums.CategoryType.ADMINISTRATIONS)
-                .publisherType(AuditEnums.PublisherType.APP_SERVICE)
-                .eventType(AuditEnums.EventType.ACTION)
-                .build();
-        assertThat(validatorService.sanitize(audit).size(), is(0));
-    }
-
-    @Test(expected = VersioningException.class)
-    public void unSupportedVersionAuditEventV2Test() throws IOException, ValidationException {
-        AuditEventV2 audit = new AuditEventV2();
-        audit.setVersion(3);
-        log.info(audit.toString());
-        validatorService.sanitize(audit);
-    }
-
-    @Test
-    public void extractAuditEventV2AndSanitizeFishyTagsMessageTest() throws IOException, ValidationException {
-        for(String fishy: FISHY_TAGS){
-            log.info("Trying to test fishy tag: " + fishy);
-            createMessageAndTestFishy(fishy);
-        }
-    }
-
-    @Test
-    public void extractAuditEventV2AndSanitizeFishyStringMessageTest() throws IOException, ValidationException {
-        for(String fishy: FISHY_STRINGS){
-            log.info("Trying to test fishy string: " + fishy);
-            createMessageAndTestFishy(fishy);
-        }
-    }
-
-    private void createMessageAndTestFishy(String fishy) throws ValidationException {
-        AuditEventV2 audit = AuditEventV2.builder()
-                .eventType(AuditEnums.EventType.FAILURE_API_REQUEST)
-                .categoryType(AuditEnums.CategoryType.API_CALLS)
-                .publisherType(AuditEnums.PublisherType.APP_SERVICE)
-                .payload(fishy)
-                .build();
-        assertThat(validatorService.sanitize(audit).size(), is(1));
-    }
-
-    @Test
-    public void createV2MessageInvalidTenantIdTest() throws ValidationException {
+    public void createV2MessageInvalidTenantIdTest() throws ValidationException, NoSuchFieldException, IllegalAccessException {
         String longTenantId = "r3hXNg4a1NMW7CJUktU5tnpwZreVZgNDyDI1F";
         String expectedErr = "The field must be maximum 36 characters";
         String expectedPathErr = "tenantUuid";
@@ -111,11 +52,16 @@ public class ValidatorServiceTest {
         assertThat(longTenantId.length(),is(37));
 
         AuditEventV2 audit = AuditEventV2.builder()
-                .tenantUuid(longTenantId)
+                .tenantUuid(UUID.randomUUID().toString())
                 .eventType(AuditEnums.EventType.FAILURE_API_REQUEST)
                 .categoryType(AuditEnums.CategoryType.API_CALLS)
                 .publisherType(AuditEnums.PublisherType.APP_SERVICE)
                 .build();
+
+        Field tenantUuidField = audit.getClass().getDeclaredField("tenantUuid");
+        tenantUuidField.setAccessible(true);
+        tenantUuidField.set(audit, longTenantId);
+
         List<ValidatorReport> reports = validatorService.validate(audit);
         assertThat(reports.size(),is(1));
 
@@ -139,7 +85,12 @@ public class ValidatorServiceTest {
         List<ValidatorReport> reports = validatorService.validate(audit);
         assertThat(reports.isEmpty(),is(true));
 
-        audit.setTenantUuid(UUID.randomUUID().toString());
+        audit = AuditEventV2.builder()
+                .tenantUuid(UUID.randomUUID().toString())
+                .eventType(AuditEnums.EventType.FAILURE_API_REQUEST)
+                .categoryType(AuditEnums.CategoryType.API_CALLS)
+                .publisherType(AuditEnums.PublisherType.APP_SERVICE)
+                .build();
         reports = validatorService.validate(audit);
         assertThat(reports.isEmpty(),is(true));
     }
@@ -159,20 +110,30 @@ public class ValidatorServiceTest {
         List<ValidatorReport> reports = validatorService.validate(audit);
         assertTrue(reports.isEmpty());
 
-        audit.setCorrelationId(UUID.randomUUID().toString());
+        audit = AuditEventV2.builder()
+                .correlationId(UUID.randomUUID().toString())
+                .eventType(AuditEnums.EventType.FAILURE_API_REQUEST)
+                .categoryType(AuditEnums.CategoryType.API_CALLS)
+                .publisherType(AuditEnums.PublisherType.APP_SERVICE)
+                .build();
         reports = validatorService.validate(audit);
         assertTrue(reports.isEmpty());
     }
 
     @Test
-    public void createV2MessageInvalidCorrelationIdTest() throws ValidationException {
+    public void createV2MessageInvalidCorrelationIdTest() throws ValidationException, NoSuchFieldException, IllegalAccessException {
         String correlationId = "66abcdefghijklmnopqrstuvwxyzr3hXNg4a1NMW7CJUktU5tnpwZreVZgNDyDI112"; //66 chars
         AuditEventV2 audit = AuditEventV2.builder()
-                .correlationId(correlationId)
+                .correlationId(UUID.randomUUID().toString())
                 .eventType(AuditEnums.EventType.FAILURE_API_REQUEST)
                 .categoryType(AuditEnums.CategoryType.API_CALLS)
                 .publisherType(AuditEnums.PublisherType.APP_SERVICE)
                 .build();
+
+        Field correlationIdField = audit.getClass().getDeclaredField("correlationId");
+        correlationIdField.setAccessible(true);
+        correlationIdField.set(audit, correlationId);
+
         List<ValidatorReport> reports = validatorService.validate(audit);
         assertTrue(!reports.isEmpty());
         assertThat(reports.get(0).getOriginalMessage(), containsString(CORRELATION_ID));

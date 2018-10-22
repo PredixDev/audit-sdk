@@ -1,14 +1,7 @@
 package com.ge.predix.audit.sdk.message;
 
-import com.ge.predix.audit.sdk.exception.UnmodifiableFieldException;
-import com.ge.predix.audit.sdk.util.EnvUtils;
-import org.junit.Before;
-import org.junit.Ignore;
+import com.ge.predix.audit.sdk.exception.AuditValidationException;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.powermock.api.mockito.PowerMockito;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.nio.charset.Charset;
 import java.util.UUID;
@@ -16,6 +9,7 @@ import java.util.logging.Logger;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.*;
 
 /**
  * Created by 212584872 on 1/9/2017.
@@ -65,7 +59,7 @@ public class AuditEventV2Test {
         assertThat(message1.hashCode() != message2.hashCode(),is(true));
     }
 
-    @Test(expected = NullPointerException.class)
+    @Test(expected = AuditValidationException.class)
     public void auditMessageMandatoryPublisherTypeFieldTest(){
         AuditEventV2.builder()
                 .payload("There is no publisher")
@@ -75,7 +69,7 @@ public class AuditEventV2Test {
                 .build();
     }
 
-    @Test(expected = NullPointerException.class)
+    @Test(expected = AuditValidationException.class)
     public void auditMessageMandatoryCategoryTypeFieldTest(){
         AuditEventV2.builder()
                 .payload("There is no category")
@@ -85,7 +79,7 @@ public class AuditEventV2Test {
                 .build();
     }
 
-    @Test(expected = NullPointerException.class)
+    @Test(expected = AuditValidationException.class)
     public void auditMessageMandatoryEventTypeFieldTest(){
         AuditEventV2.builder()
                 .payload("There is no category")
@@ -111,7 +105,6 @@ public class AuditEventV2Test {
     public void auditMessageMandatoryAuditServiceIdIsNullFieldTest(){
         AuditEventV2 event =  AuditEventV2.builder()
                 .payload("There is auditServiceId")
-                .messageId(null)
                 .classifier(AuditEnums.Classifier.FAILURE)
                 .publisherType(AuditEnums.PublisherType.APP_SERVICE)
                 .categoryType(AuditEnums.CategoryType.API_CALLS)
@@ -119,37 +112,6 @@ public class AuditEventV2Test {
                 .build();
 
         assertThat(event.getMessageId() != null,is(true));
-    }
-
-
-
-    @Ignore
-    @Test(expected = UnmodifiableFieldException.class)
-    public void auditMessageSetVersionTest() throws UnmodifiableFieldException {
-        AuditEventV2.builder().payload("Stam").version(5).build();
-    }
-
-    @Test(expected = NullPointerException.class)
-    public void auditMessageMandatoryTypes() throws UnmodifiableFieldException {
-        AuditEventV2.builder().payload("Stam").messageId("I'm trying to trick you!").build();
-    }
-
-    @Test
-    public void auditMessageSetPayloadTest(){
-        AuditEventV2 eventV2 = AuditEventV2.builder()
-                .payload("GET: /v2/resources was unsuccessful")
-                .classifier(AuditEnums.Classifier.FAILURE)
-                .publisherType(AuditEnums.PublisherType.APP_SERVICE)
-                .categoryType(AuditEnums.CategoryType.API_CALLS)
-                .eventType(AuditEnums.EventType.FAILURE_API_REQUEST)
-                .tenantUuid(TENANT)
-                .correlationId(CORRELATION_ID)
-                .messageId("This is automatically generated!")
-                .build();
-
-        String newPayload = "The is a new payload!";
-        eventV2.setPayload(newPayload);
-        assertThat(eventV2.getPayload().equals(newPayload),is(true));
     }
 
     @Test
@@ -194,7 +156,7 @@ public class AuditEventV2Test {
         assertThat(cloned.getClassifier() == AuditEnums.Classifier.SUCCESS,is(true));
     }
 
-    @Test(expected = NullPointerException.class)
+    @Test(expected = AuditValidationException.class)
     public void auditNoPublisherTest(){
         AuditEventV2 eventV1 = AuditEventV2.builder()
                 .classifier(AuditEnums.Classifier.FAILURE)
@@ -204,7 +166,7 @@ public class AuditEventV2Test {
                 .build();
     }
 
-    @Test(expected = NullPointerException.class)
+    @Test(expected = AuditValidationException.class)
     public void auditNoCategoryTest(){
         AuditEventV2 eventV1 = AuditEventV2.builder()
                 .classifier(AuditEnums.Classifier.FAILURE)
@@ -214,7 +176,7 @@ public class AuditEventV2Test {
                 .build();
     }
 
-    @Test(expected = NullPointerException.class)
+    @Test(expected = AuditValidationException.class)
     public void auditNoEventTypeTest(){
         AuditEventV2 eventV1 = AuditEventV2.builder()
                 .classifier(AuditEnums.Classifier.FAILURE)
@@ -224,92 +186,59 @@ public class AuditEventV2Test {
                 .build();
     }
 
-    @Test(expected = NullPointerException.class)
-    public void auditNoClassifierConstructorTest(){
-        AuditEventV2 event = new AuditEventV2("test",
-        2,
-        System.currentTimeMillis(),
-        null,
-        AuditEnums.PublisherType.APP_SERVICE,
-        AuditEnums.CategoryType.API_CALLS,
-        AuditEnums.EventType.CUSTOM,
-        null,
-        null,
-        null);
-    }
 
-    @Test(expected = NullPointerException.class)
-    public void auditNoPublisherConstructorTest(){
-        AuditEventV2 eventV2 = new AuditEventV2("test",
-                2,
-                System.currentTimeMillis(),
-                AuditEnums.Classifier.FAILURE,
-                null,
-                AuditEnums.CategoryType.API_CALLS,
-                AuditEnums.EventType.CUSTOM,
-                null,
-                null,
-                null);
-    }
-
-    @Test(expected = NullPointerException.class)
-    public void auditNoCategoryConstructorTest(){
-        AuditEventV2 eventV2 = new AuditEventV2("test",
-                2,
-                System.currentTimeMillis(),
-                AuditEnums.Classifier.FAILURE,
-                AuditEnums.PublisherType.OS,
-                null,
-                AuditEnums.EventType.CUSTOM,
-                null,
-                null,
-                null);
-    }
-
-    @Test(expected = NullPointerException.class)
-    public void auditNoEventTypeConstructorTest(){
-        AuditEventV2 eventV2 = new AuditEventV2("test",
-                2,
-                System.currentTimeMillis(),
-                AuditEnums.Classifier.FAILURE,
-                AuditEnums.PublisherType.OS,
-                AuditEnums.CategoryType.API_CALLS,
-                null,
-                null,
-                null,
-                null);
-    }
-
-    @Test(expected = NullPointerException.class)
-    public void auditTimeStampIs0ConstructorTest(){
-        AuditEventV2 eventV2 = new AuditEventV2("test",
-                0,
-                System.currentTimeMillis(),
-                AuditEnums.Classifier.FAILURE,
-                AuditEnums.PublisherType.OS,
-                AuditEnums.CategoryType.API_CALLS,
-                null,
-                null,
-                null,
-                null);
+    @Test
+    public void auditTimeStampIs0Test(){
+        AuditEventV2 eventV2 = AuditEventV2.builder()
+                .timestamp(0)
+                .classifier(AuditEnums.Classifier.FAILURE)
+                .publisherType(AuditEnums.PublisherType.APP_SERVICE)
+                .categoryType(AuditEnums.CategoryType.API_CALLS)
+                .eventType(AuditEnums.EventType.SHUTDOWN_EVENT)
+                .payload("GET v2/apps T.O")
+                .build();
 
         assertThat(eventV2.getTimestamp()>0,is(true));
     }
 
-    @Test
-    public void auditMessageIdIsNullConstructorTest(){
-        AuditEventV2 eventV2 = new AuditEventV2("test",
-                0,
-                System.currentTimeMillis(),
-                AuditEnums.Classifier.FAILURE,
-                AuditEnums.PublisherType.OS,
-                AuditEnums.CategoryType.API_CALLS,
-                AuditEnums.EventType.CUSTOM,
-                null,
-                null,
-                null);
 
-        assertThat(eventV2.getMessageId()!= null,is(true));
+    @Test
+    public void validateEventsBuilderMissingCategoryTypeFailureTest() {
+
+        try {
+            AuditEventV2.builder()
+                    .eventType(AuditEnums.EventType.STARTUP_EVENT)
+                    .classifier(AuditEnums.Classifier.FAILURE)
+                    .publisherType(AuditEnums.PublisherType.APP_SERVICE)
+                    .build();
+
+        }catch(AuditValidationException e){
+            assertFalse(e.getValidationReport().isEmpty());
+            assertTrue(e.getValidationReport().get(0).getOriginalMessage().contains("interpolatedMessage='may not be null', propertyPath=categoryType"));
+            return;
+        }
+
+        fail();
     }
 
+
+    @Test
+    public void validateEventsBuilderInvalidTenantIdFailureTest() {
+
+        try {
+            AuditEventV2.builder()
+                    .categoryType(AuditEnums.CategoryType.ADMINISTRATIONS)
+                    .eventType(AuditEnums.EventType.STARTUP_EVENT)
+                    .classifier(AuditEnums.Classifier.FAILURE)
+                    .publisherType(AuditEnums.PublisherType.APP_SERVICE)
+                    .tenantUuid("a very verrrrrryyyyy looooooonngggg striiinnnnggg")
+                    .build();
+        }catch(AuditValidationException e){
+            assertFalse(e.getValidationReport().isEmpty());
+            assertTrue(e.getValidationReport().get(0).getOriginalMessage().contains("interpolatedMessage='The field must be maximum 36 characters', propertyPath=tenantUuid"));
+            return;
+        }
+
+        fail();
+    }
 }

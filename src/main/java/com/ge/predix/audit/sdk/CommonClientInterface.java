@@ -9,11 +9,11 @@ import java.util.List;
 /**
  * Created by 212582776 on 2/20/2018.
  */
-public interface CommonClientInterface {
+public interface CommonClientInterface<T extends AuditEvent> {
 
-	AuditingResult audit(AuditEvent event) throws AuditException;
+	AuditingResult<T> audit(T event) throws AuditException;
 
-	AuditingResult audit(List<AuditEvent> events) throws AuditException;
+	AuditingResult<T> audit(List<T> events) throws AuditException;
 
     void reconnect() throws EventHubClientException;
 

@@ -1,24 +1,23 @@
 package com.ge.predix.audit.sdk.routing;
 
+import com.ge.predix.audit.sdk.AuditEventFailReport;
 import com.ge.predix.audit.sdk.CommonClientInterface;
-import com.ge.predix.audit.sdk.FailReport;
+import com.ge.predix.audit.sdk.FailCode;
+import com.ge.predix.audit.sdk.Result;
 import com.ge.predix.audit.sdk.message.AuditEvent;
 import com.ge.predix.audit.sdk.message.AuditEventsConverter;
 import com.ge.predix.audit.sdk.routing.cache.TenantCacheProxy;
-import com.ge.predix.audit.sdk.util.CustomLogger;
 import com.ge.predix.audit.sdk.util.ExceptionUtils;
-import com.ge.predix.audit.sdk.util.LoggerUtils;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 @AllArgsConstructor(access = AccessLevel.PACKAGE)
 public class RoutingAuditPublisher<T extends AuditEvent> {
-
-    private static CustomLogger log = LoggerUtils.getLogger(RoutingAuditPublisher.class.getName());
 
     private final RoutingAuditCallback<T> callback;
     private final TenantCacheProxy tenantCacheProxy;
@@ -34,11 +33,22 @@ public class RoutingAuditPublisher<T extends AuditEvent> {
                 "Failed to audit events to application shared Audit instance");
     }
 
-    private synchronized void publish(Supplier<CommonClientInterface> supplier, List<T> events, String error)  {
+    private synchronized void publish(Supplier<CommonClientInterface<T>> supplier, List<T> events, String error)  {
         try {
-            supplier.get().audit(events.stream().map(converter::extend).collect(Collectors.toList()));
+            @SuppressWarnings("unchecked") List<T> eventsToSend = (List<T>) events.stream().map(converter::extend).collect(Collectors.toList());
+            supplier.get().audit(eventsToSend);
         } catch (Exception e) {
-            events.forEach(event -> callback.onFailure(event, FailReport.CLIENT_INITIALIZATION_ERROR, String.format("%s Exception: %s", error, ExceptionUtils.toString(e))));
+            List<AuditEventFailReport<T>> failReports = new ArrayList<>();
+            events.forEach(event ->
+                    failReports.add(AuditEventFailReport.<T>builder()
+                            .auditEvent(event)
+                            .failureReason(FailCode.CLIENT_INITIALIZATION_ERROR)
+                            .description(error)
+                            .throwable(e)
+                            .build()));
+            if(!failReports.isEmpty()) {
+                callback.onFailure(Result.<T>builder().failReports(failReports).build());
+            }
         }
     }
 

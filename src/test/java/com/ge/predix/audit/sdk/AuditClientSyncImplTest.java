@@ -13,12 +13,15 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.lang.reflect.Field;
 import java.util.*;
 
 import com.ge.predix.audit.sdk.message.AuditEnums;
 import com.ge.predix.audit.sdk.message.AuditEventV2;
+import com.ge.predix.audit.sdk.util.ReflectionUtils;
+import com.ge.predix.eventhub.stub.Ack;
+import com.ge.predix.eventhub.stub.AckStatus;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mockito;
 
@@ -27,14 +30,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ge.predix.audit.sdk.config.AuditConfiguration;
 import com.ge.predix.audit.sdk.exception.AuditException;
 import com.ge.predix.audit.sdk.message.AuditEvent;
-import com.ge.predix.audit.sdk.validator.ValidatorServiceImpl;
-import com.ge.predix.eventhub.Ack;
-import com.ge.predix.eventhub.AckStatus;
 import com.ge.predix.eventhub.EventHubClientException;
 import com.ge.predix.eventhub.client.Client;
 
 @SuppressWarnings("unchecked")
-@Ignore
 public class AuditClientSyncImplTest {
 
     //TODO test shutdown
@@ -42,7 +41,6 @@ public class AuditClientSyncImplTest {
     private TracingHandler tracingHandler;
     private static AuditConfiguration bulkConfiguration;
     private static AuditConfiguration badConfiguration;
-    private static ValidatorServiceImpl validatorService;
     private static ObjectMapper om;
     private int defaultRetryCount = 2;
     
@@ -50,7 +48,6 @@ public class AuditClientSyncImplTest {
     public void init() {
         tracingHandler = Mockito.mock(TracingHandler.class);
         om = new ObjectMapper();
-        validatorService = new ValidatorServiceImpl();
 
         badConfiguration = AuditConfiguration.builder()
                 .ehubHost("")
@@ -85,39 +82,36 @@ public class AuditClientSyncImplTest {
     public void initFailureTest() throws EventHubClientException, AuditException {
     	new AuditClientSyncImpl(badConfiguration, tracingHandler);
     }
-    
+
     @Test
     public void validateEventsFailureTest() throws EventHubClientException, AuditException {
-        AuditClientSyncImpl auditClientSync = new AuditClientSyncImpl(bulkConfiguration, tracingHandler);
-        auditClientSync.setValidatorService(validatorService);
+        AuditClientSyncImpl<AuditEvent> auditClientSync = new AuditClientSyncImpl(bulkConfiguration, tracingHandler);
         Client client = mock(Client.class);
         auditClientSync.setClient(client);
-        AuditEventV2 wrongVersionEvent = mock(AuditEventV2.class);
-        when(wrongVersionEvent.getVersion()).thenReturn(-1);
-        
-        AuditingResult result = auditClientSync.audit(wrongVersionEvent);
+        AuditEventV2 noClassifierEvent = mock(AuditEventV2.class);
+        ReflectionUtils.modifyPrivateProperty(noClassifierEvent , "classifier" , null);
+
+        AuditingResult<AuditEvent> result= auditClientSync.audit(noClassifierEvent);
 
         assertTrue(result.getSentEvents().isEmpty());
         assertEquals(1, result.getFailedEvents().size());
-        assertEquals(FailReport.VALIDATION_ERROR, result.getFailedEvents().get(0).getFailureReason());
+        assertEquals(FailCode.VALIDATION_ERROR, result.getFailedEvents().iterator().next().getFailureReason());
         verify(client, never()).addMessage(any(), any(), any());
     }
-    
+
     @Test
     public void validateEventsFailureRealTest() throws EventHubClientException, AuditException {
         AuditClientSyncImpl auditClientSync = new AuditClientSyncImpl(bulkConfiguration, tracingHandler);
         Client client = mock(Client.class);
         auditClientSync.setClient(client);
-        AuditEventV2 wrongVersionEvent = (AuditEventV2)getAuditEvent();
-        wrongVersionEvent.setTenantUuid("a very verrrrrryyyyy looooooonngggg striiinnnnggg");
-        
-        AuditingResult result = auditClientSync.audit(wrongVersionEvent);
+        AuditEventV2 invalidTenantUuidEvent = mock(AuditEventV2.class);
+        ReflectionUtils.modifyPrivateProperty(invalidTenantUuidEvent , "tenantUuid" , "a very verrrrrryyyyy looooooonngggg striiinnnnggg");
 
-        System.out.println(result);
-        
+        AuditingResult<AuditEvent> result = auditClientSync.audit(invalidTenantUuidEvent);
+
         assertTrue(result.getSentEvents().isEmpty());
         assertEquals(1, result.getFailedEvents().size());
-        assertEquals(FailReport.VALIDATION_ERROR, result.getFailedEvents().get(0).getFailureReason());
+        assertEquals(FailCode.VALIDATION_ERROR, result.getFailedEvents().get(0).getFailureReason());
         verify(client, never()).addMessage(any(), any(), any());
     }
 
@@ -131,11 +125,11 @@ public class AuditClientSyncImplTest {
         Client client = mock(Client.class);
         auditClientSync.setClient(client);
         
-        AuditingResult result = auditClientSync.audit(events);
+        AuditingResult<AuditEvent> result = auditClientSync.audit(events);
         
         assertTrue(result.getSentEvents().isEmpty());
         assertEquals(1, result.getFailedEvents().size());
-        assertEquals(FailReport.JSON_ERROR, result.getFailedEvents().get(0).getFailureReason());
+        assertEquals(FailCode.JSON_ERROR, result.getFailedEvents().get(0).getFailureReason());
         verify(client, never()).addMessage(any(), any(), any());
     }
 
@@ -148,11 +142,11 @@ public class AuditClientSyncImplTest {
         auditClientSync.setOm(om);
         List<AuditEvent> events = Collections.singletonList(getAuditEvent());
 
-        AuditingResult result = auditClientSync.audit(events);
+        AuditingResult<AuditEvent> result = auditClientSync.audit(events);
         
         assertTrue(result.getSentEvents().isEmpty());
         assertEquals(1, result.getFailedEvents().size());
-        assertEquals(FailReport.ADD_MESSAGE_ERROR, result.getFailedEvents().get(0).getFailureReason());
+        assertEquals(FailCode.ADD_MESSAGE_ERROR, result.getFailedEvents().get(0).getFailureReason());
     }
 
     @Test
@@ -179,13 +173,13 @@ public class AuditClientSyncImplTest {
         auditClientSync.setRetryCount(0);
         List<AuditEvent> events = Collections.singletonList(getAuditEvent());
         
-        AuditingResult result = auditClientSync.audit(events);
+        AuditingResult<AuditEvent> result = auditClientSync.audit(events);
         
         verify(mockedClient, times(1)).addMessage(any(), any(), any());
         verify(mockReconnect, times(1)).notifyStateChanged(any());
         assertTrue(result.getSentEvents().isEmpty());
         assertEquals(1, result.getFailedEvents().size());
-        assertEquals(FailReport.NO_ACK, result.getFailedEvents().get(0).getFailureReason());
+        assertEquals(FailCode.NO_ACK, result.getFailedEvents().get(0).getFailureReason());
     }
     
     @Test
@@ -198,12 +192,12 @@ public class AuditClientSyncImplTest {
         auditClientSync.setRetryCount(0);
         List<AuditEvent> events = Collections.singletonList(getAuditEvent());
         
-        AuditingResult result = auditClientSync.audit(events);
+        AuditingResult<AuditEvent> result = auditClientSync.audit(events);
         
         verify(mockedClient, times(1)).addMessage(any(), any(), any());
         assertTrue(result.getSentEvents().isEmpty());
         assertEquals(1, result.getFailedEvents().size());
-        assertEquals(FailReport.NO_ACK, result.getFailedEvents().get(0).getFailureReason());
+        assertEquals(FailCode.NO_ACK, result.getFailedEvents().get(0).getFailureReason());
     }
     
     @Test
@@ -220,24 +214,26 @@ public class AuditClientSyncImplTest {
         auditClientSync.setRetryCount(0);
         List<AuditEvent> events = Arrays.asList(successEvent, noAckEvent);
         
-        AuditingResult result = auditClientSync.audit(events);
+        AuditingResult<AuditEvent> result = auditClientSync.audit(events);
         
         verify(mockedClient, times(2)).addMessage(any(), any(), any());
         assertEquals(1, result.getSentEvents().size());
         assertEquals(1, result.getFailedEvents().size());
-        assertEquals(FailReport.NO_ACK, result.getFailedEvents().get(0).getFailureReason());
+        assertEquals(FailCode.NO_ACK, result.getFailedEvents().get(0).getFailureReason());
     }
     
     @Test
     public void handleAcceptedAcksTest() throws EventHubClientException, AuditException {
-    	String msgId = UUID.randomUUID().toString();
+
+        AuditEvent auditEvent = getAuditEvent();
+        String msgId = auditEvent.getMessageId();
     	Client mockedClient = mock(Client.class);
     	when(mockedClient.addMessage(any())).thenReturn(mockedClient);
     	when(mockedClient.flush()).thenReturn(Arrays.asList(Ack.newBuilder().setStatusCode(AckStatus.ACCEPTED).setId(msgId).build()));
         AuditClientSyncImpl auditClientSync = new AuditClientSyncImpl(bulkConfiguration, tracingHandler);
         auditClientSync.setClient(mockedClient);
-        List<AuditEvent> events = Collections.singletonList(getAuditEvent());
-        events.get(0).setMessageId(msgId);
+
+        List<AuditEvent> events = Collections.singletonList(auditEvent);
         
         AuditingResult result = auditClientSync.audit(events);
         
@@ -270,23 +266,23 @@ public class AuditClientSyncImplTest {
     
     @Test
     public void handleNotAcceptedAcksTest() throws EventHubClientException, AuditException {
-    	String msgId = UUID.randomUUID().toString();
+        AuditEvent auditEvent = getAuditEvent();
+        String msgId = auditEvent.getMessageId();
     	Client mockedClient = mock(Client.class);
     	when(mockedClient.addMessage(any())).thenReturn(mockedClient);
     	when(mockedClient.flush()).thenReturn(Arrays.asList(Ack.newBuilder().setStatusCode(AckStatus.BAD_REQUEST).setId(msgId).build()));
         AuditClientSyncImpl auditClientSync = new AuditClientSyncImpl(bulkConfiguration, tracingHandler);
         auditClientSync.setClient(mockedClient);
         auditClientSync.setRetryCount(0);
-        List<AuditEvent> events = Collections.singletonList(getAuditEvent());
-        events.get(0).setMessageId(msgId);
+        List<AuditEvent> events = Collections.singletonList(auditEvent);
         
-        AuditingResult result = auditClientSync.audit(events);
+        AuditingResult<AuditEvent> result = auditClientSync.audit(events);
         
         verify(mockedClient, times(1)).addMessage(any(), any(), any());
         verify(mockedClient, times(1)).flush();
         assertTrue(result.getSentEvents().isEmpty());
         assertEquals(1, result.getFailedEvents().size());
-        assertEquals(FailReport.BAD_ACK, result.getFailedEvents().get(0).getFailureReason());
+        assertEquals(FailCode.BAD_ACK, result.getFailedEvents().get(0).getFailureReason());
     }
     
     @Test
@@ -314,26 +310,24 @@ public class AuditClientSyncImplTest {
     	int retryCount = 8;
     	Client mockedClient = mock(Client.class);
     	AuditClientSyncImpl auditClientSync = new AuditClientSyncImpl(bulkConfiguration, tracingHandler);
-        auditClientSync.setValidatorService(validatorService);
         auditClientSync.setOm(om);
         auditClientSync.setClient(mockedClient);
         auditClientSync.setBulkSize(1);
         auditClientSync.setRetryCount(retryCount);
         AuditEvent event2 = getAuditEvent();
         
-        AuditingResult result = auditClientSync.audit(event2);
+        AuditingResult<AuditEvent> result = auditClientSync.audit(event2);
         
 		verify(mockedClient, times(retryCount + 1)).addMessage(any(), any(), any());
         assertTrue(result.getSentEvents().isEmpty());
         assertEquals(1, result.getFailedEvents().size());
-        assertEquals(FailReport.NO_ACK, result.getFailedEvents().get(0).getFailureReason());
+        assertEquals(FailCode.NO_ACK, result.getFailedEvents().get(0).getFailureReason());
     }
     
     @Test
     public void auditDefaultRetryCountTest() throws AuditException, EventHubClientException {
     	AuditClientSyncImpl auditClientSync = new AuditClientSyncImpl(bulkConfiguration, tracingHandler);
     	Client mockedClient = mock(Client.class);
-    	auditClientSync.setValidatorService(validatorService);
         auditClientSync.setOm(om);
         auditClientSync.setClient(mockedClient);
         AuditEvent event2 = getAuditEvent();
@@ -357,14 +351,14 @@ public class AuditClientSyncImplTest {
                 getAuditEvent()
         );
         
-        AuditingResult result = auditClientSync.audit(events);
+        AuditingResult<AuditEvent> result = auditClientSync.audit(events);
         
         verify(mockedClient, times(events.size() * 2)).addMessage(any(), any(), any());
         verify(mockedClient, times(1)).flush();
         assertTrue(result.getSentEvents().isEmpty());
         assertEquals(2, result.getFailedEvents().size());
-        assertEquals(FailReport.NO_ACK, result.getFailedEvents().get(0).getFailureReason());
-        assertEquals(FailReport.NO_ACK, result.getFailedEvents().get(1).getFailureReason());
+        assertEquals(FailCode.NO_ACK, result.getFailedEvents().get(0).getFailureReason());
+        assertEquals(FailCode.NO_ACK, result.getFailedEvents().get(1).getFailureReason());
     }
     
     @Test
@@ -382,7 +376,7 @@ public class AuditClientSyncImplTest {
         auditClientSync.setClient(mockedClient);
         List<AuditEvent> events = Arrays.asList(successEvent, failedEvent, noAckEvent);
         
-        AuditingResult result = auditClientSync.audit(events);
+        AuditingResult<AuditEvent> result = auditClientSync.audit(events);
         
         verify(mockedClient, times(1)).addMessage(eq(successEvent.getMessageId()), any(), any());
         verify(mockedClient, times(defaultRetryCount + 1)).addMessage(eq(failedEvent.getMessageId()), any(), any());
@@ -394,8 +388,8 @@ public class AuditClientSyncImplTest {
         AuditEventFailReport noAck = result.getFailedEvents().stream().filter(e -> e.getAuditEvent().equals(noAckEvent)).findFirst().get();
         assertNotNull(failed);
         assertNotNull(noAck);
-        assertEquals(FailReport.BAD_ACK, failed.getFailureReason());
-        assertEquals(FailReport.NO_ACK, noAck.getFailureReason());
+        assertEquals(FailCode.BAD_ACK, failed.getFailureReason());
+        assertEquals(FailCode.NO_ACK, noAck.getFailureReason());
     }
 
     @Test
@@ -472,7 +466,6 @@ public class AuditClientSyncImplTest {
 
     private AuditEvent getAuditEvent(){
         return AuditEventV2.builder()
-                .messageId(UUID.randomUUID().toString())
                 .categoryType(AuditEnums.CategoryType.ADMINISTRATIONS)
                 .eventType(AuditEnums.EventType.STARTUP_EVENT)
                 .classifier(AuditEnums.Classifier.SUCCESS)

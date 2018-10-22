@@ -3,7 +3,6 @@ package com.ge.predix.audit.sdk;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.ge.predix.audit.sdk.config.AuditConfiguration;
 import com.ge.predix.audit.sdk.exception.AuditException;
-import com.ge.predix.audit.sdk.exception.VersioningException;
 import com.ge.predix.audit.sdk.message.AuditEvent;
 import com.ge.predix.audit.sdk.message.tracing.LifeCycleEnum;
 import com.ge.predix.audit.sdk.util.CustomLogger;
@@ -11,28 +10,30 @@ import com.ge.predix.audit.sdk.util.ExceptionUtils;
 import com.ge.predix.audit.sdk.util.LoggerUtils;
 import com.ge.predix.audit.sdk.util.StreamUtils;
 import com.ge.predix.audit.sdk.validator.ValidatorReport;
-import com.ge.predix.eventhub.Ack;
-import com.ge.predix.eventhub.AckStatus;
+import com.ge.predix.audit.sdk.validator.ValidatorServiceImpl;
 import com.ge.predix.eventhub.EventHubClientException;
 import com.ge.predix.eventhub.configuration.PublishConfiguration;
-import com.ge.predix.eventhub.configuration.PublishSyncConfiguration;
-import com.google.common.collect.Lists;
+import com.ge.predix.eventhub.stub.Ack;
+import com.ge.predix.eventhub.stub.AckStatus;
 import com.google.common.collect.Sets;
 
 import java.util.*;
+import java.util.logging.Level;
 import java.util.stream.Collectors;
 
-public class AuditClientSyncImpl extends AbstractAuditClientImpl implements CommonClientInterface {
+public class AuditClientSyncImpl<T extends AuditEvent> extends AbstractAuditClientImpl<T> {
 
 	private static CustomLogger log = LoggerUtils.getLogger(AuditClientSyncImpl.class.getName());
 
 	public static final int PUBLISHER_TIMEOUT = 5000;
 
-	private AuditingResultContainer result;
+	private AuditingResultContainer<T> result;
 
 	public AuditClientSyncImpl(AuditConfiguration configuration, TracingHandler tracingHandler) throws EventHubClientException {
 		super(configuration, tracingHandler);
-		PublishConfiguration publishConfiguration = new PublishSyncConfiguration.Builder().timeout(PUBLISHER_TIMEOUT).build();
+		PublishConfiguration publishConfiguration = new PublishConfiguration.Builder()
+				.publisherType(PublishConfiguration.PublisherType.SYNC)
+				.timeout(PUBLISHER_TIMEOUT).build();
 		this.client = buildClient(configuration, publishConfiguration);
 		this.reconnectEngine = ReconnectStrategyFactory.getReconnectStrategy(configuration.getReconnectMode(), this::innerReconnect, logPrefix);
 		setStateAndNotify(AuditCommonClientState.CONNECTED);
@@ -44,8 +45,8 @@ public class AuditClientSyncImpl extends AbstractAuditClientImpl implements Comm
 	 * @param event - the event to be audited
 	 */
 	@Override
-	public synchronized AuditingResult audit(AuditEvent event) throws AuditException {
-		return audit(Lists.newArrayList(event));
+	public synchronized AuditingResult<T> audit(T event) throws AuditException {
+		return audit(Collections.singletonList(event));
 	}
 
 	/**
@@ -54,48 +55,38 @@ public class AuditClientSyncImpl extends AbstractAuditClientImpl implements Comm
 	 * @param events - the events to be audited
 	 */
 	@Override
-	public synchronized AuditingResult audit(List<AuditEvent> events) throws AuditException {
+	public synchronized AuditingResult<T> audit(List<T> events) throws AuditException {
 		throwIfShutdown();
 		log.info("starting to audit %d messages", events.size());
-		result = new AuditingResultContainer();
-		try {
-			log.info("bulk size is %d", this.bulkSize);
-			StreamUtils.partitionOf(events,this.bulkSize).forEach(
-					auditEvents -> {
-						List<AuditEvent> validEvents = validateEvents(auditEvents);
-						List<AuditEvent> cachedEvents = addToEventhubCache(validEvents);
-						flushWithRetries(cachedEvents.stream().collect(Collectors.toMap(AuditEvent::getMessageId,event -> event)));
-					});
-		} catch (NullPointerException | IllegalArgumentException e){
-			//Meaning that validation service/object mapper or other object is probably null
-			throw new AuditException(e.getMessage(), e);
-		}
-
+		result = new AuditingResultContainer<T>();
+		log.info("bulk size is %d", this.bulkSize);
+		StreamUtils.partitionOf(events, this.bulkSize).forEach(
+				auditEvents -> {
+					List<T> validEvents = validateEvents(auditEvents);
+					List<T> cachedEvents = addToEventhubCache(validEvents);
+					flushWithRetries(cachedEvents.stream().collect(Collectors.toMap(AuditEvent::getMessageId, event -> event)));
+				});
 		return result.getResult();
 	}
 
-	private List<AuditEvent> validateEvents(Collection<AuditEvent> events) {
-		log.info("Trying to validate %d events",events.size());
-		List<AuditEvent> validEvents = new ArrayList<>(events.size());
+	private List<T> validateEvents(Collection<T> events) {
+		log.logWithPrefix(Level.INFO, logPrefix, "Trying to validate %d events", events.size());
+		List<T> validEvents = new ArrayList<>(events.size());
+
 		events.forEach(event -> {
-			try {
-				List<ValidatorReport> report = validatorService.validate(event);
+				List<ValidatorReport> report = ValidatorServiceImpl.instance.validate(event);
 				if (!report.isEmpty()) {
-					result.onFailure(event, FailReport.VALIDATION_ERROR, report.toString());
+					result.onFailure(event, FailCode.VALIDATION_ERROR, report.toString());
 				} else {
 					validEvents.add(event);
 				}
-			} catch (VersioningException e) {
-				log.warning(e.toString());
-				result.onFailure(event, FailReport.VERSION_NOT_SUPPORTED, e.toString());
-			}
 		});
 		return validEvents;
 	}
 
-	private List<AuditEvent> addToEventhubCache(Collection<AuditEvent> events) {
+	private List<T> addToEventhubCache(Collection<T> events) {
 		log.info("adding %d events to EventHub client", events.size());
-		List<AuditEvent> cachedEvents = new ArrayList<>(events.size());
+		List<T> cachedEvents = new ArrayList<>(events.size());
 		events.forEach(event -> {
 			try {
 				String body = om.writeValueAsString(event);
@@ -104,17 +95,17 @@ public class AuditClientSyncImpl extends AbstractAuditClientImpl implements Comm
 				log.info("event with id %s was added to eventhub client", event.getMessageId());
 			} catch (JsonProcessingException e) {
 				log.warning(e.toString());
-				result.onFailure(event, FailReport.JSON_ERROR, e.toString());
+				result.onFailure(event, FailCode.JSON_ERROR, "add event to cache - json processing error", e);
 			} catch (EventHubClientException e) {
 				log.warning(e.toString());
-				result.onFailure(event, FailReport.ADD_MESSAGE_ERROR, e.toString());
+				result.onFailure(event, FailCode.ADD_MESSAGE_ERROR, "add event to cache - event hub client error", e);
 			}
 		});
 
 		return cachedEvents;
 	}
 	
-	private void flushWithRetries(Map<String, AuditEvent> auditToSend) {
+	private void flushWithRetries(Map<String, T> auditToSend) {
 		if(!auditToSend.isEmpty()) {
 			for (int i = 0; i <= this.retryCount; i++) {
 				if(isSendMode()) {
@@ -137,7 +128,7 @@ public class AuditClientSyncImpl extends AbstractAuditClientImpl implements Comm
 		}
 	}
 
-	private void flushAndHandleAcks(Map<String, AuditEvent> auditToSend, final int retry) {
+	private void flushAndHandleAcks(Map<String, T> auditToSend, final int retry) {
 		int auditsSize = auditToSend.size();
 		List<Ack> acks = flushEventhub();
 		if((acks == null) || acks.isEmpty()) {
@@ -146,9 +137,9 @@ public class AuditClientSyncImpl extends AbstractAuditClientImpl implements Comm
 				if (!tracingHandler.isTracingEvent(audit)){
 					log.info(String.format("No Ack for message %s, send attempt number %d trying again",
 							audit.getMessageId(), retry+1));
-					result.onFailure(audit, FailReport.NO_ACK, NO_ACK_WAS_RECEIVED);
+					result.onFailure(audit, FailCode.NO_ACK, NO_ACK_WAS_RECEIVED);
 				} else {
-					log.info(String.format("message id %s is tracing message, therefore onFailure" +
+					log.info(String.format("message id %s is tracing message, therefore onClientError" +
 							" callback is not called.", audit.toString()));
 				}
 			});
@@ -161,16 +152,16 @@ public class AuditClientSyncImpl extends AbstractAuditClientImpl implements Comm
 		}
 	}
 	
-	private void notifyNoAcks(List<Ack> acks, Map<String, AuditEvent> events) {
+	private void notifyNoAcks(List<Ack> acks, Map<String, T> events) {
 		Set<String> eventIds = Sets.newHashSet(events.keySet());
 		acks.forEach(ack -> eventIds.remove(ack.getId()));
 
 		eventIds.forEach(eventId -> {
-			result.onFailure(events.get(eventId), FailReport.NO_ACK, "No ack");
+			result.onFailure(events.get(eventId), FailCode.NO_ACK, "No ack");
 		});
 	}
 	
-	private boolean resendRequired(Map<String, AuditEvent> auditToSend, int retryAttempt) {
+	private boolean resendRequired(Map<String, T> auditToSend, int retryAttempt) {
 		boolean result = true;
 
 		if (auditToSend.size() > 0 && retryAttempt != this.retryCount) {
@@ -183,7 +174,7 @@ public class AuditClientSyncImpl extends AbstractAuditClientImpl implements Comm
 		return result;
 	}
 	
-	private void notifyOnFailure(Map<String, AuditEvent> auditToSend) {
+	private void notifyOnFailure(Map<String, T> auditToSend) {
 		log.info(String.format("Finish to flush, amount of remaining audits that didn't succeed: %d",
 				auditToSend.size()));
 
@@ -211,7 +202,7 @@ public class AuditClientSyncImpl extends AbstractAuditClientImpl implements Comm
 		return acks;
 	}
 	
-	private void notifyAck(Ack ack, Map<String, AuditEvent> auditMap) {
+	private void notifyAck(Ack ack, Map<String, T> auditMap) {
 		log.info(String.format("Got ack for message: %s with status: %s",ack.getId(),ack.getStatusCode().name()));
 		if (ack.getStatusCode() == AckStatus.ACCEPTED) {
 			handleAcceptedAcks(ack, auditMap);
@@ -220,24 +211,24 @@ public class AuditClientSyncImpl extends AbstractAuditClientImpl implements Comm
 		}
 	}
 	
-	private void handleNotAcceptedAcks(Ack ack, Map<String, AuditEvent> auditMap) {
+	private void handleNotAcceptedAcks(Ack ack, Map<String, T> auditMap) {
 		String eventId = ack.getId();
-		AuditEvent failureEvent = auditMap.get(eventId);
+		T failureEvent = auditMap.get(eventId);
 		if(failureEvent != null && tracingHandler.isTracingEvent(failureEvent)) {
 			log.warning("The following Tracing event "+failureEvent.toString()+ " got bad ack: "+printAck(ack));
 			tracingHandler.sendCheckpoint(failureEvent, LifeCycleEnum.FAIL,"bad ack: " + printAck(ack));
 		} else {
 			if(failureEvent != null) {
 				log.info(String.format("got NACK for message id %s, nack: %s", eventId, printAck(ack)));
-				result.onFailure(failureEvent, FailReport.BAD_ACK, printAck(ack));
+				result.onFailure(failureEvent, FailCode.BAD_ACK, printAck(ack));
 			} else {
 				log.warning(String.format("Ack for message: %s is bad, and the message is not in map.", eventId));
 			}
 		}
 	}
 	
-	private void handleAcceptedAcks(Ack ack, Map<String, AuditEvent> auditMap) {
-		AuditEvent successEvent = auditMap.remove(ack.getId());
+	private void handleAcceptedAcks(Ack ack, Map<String, T> auditMap) {
+		T successEvent = auditMap.remove(ack.getId());
 		if(!tracingHandler.isTracingAck(ack)) {
 			if(null != successEvent) {
 				result.onSuccess(successEvent);
@@ -251,17 +242,16 @@ public class AuditClientSyncImpl extends AbstractAuditClientImpl implements Comm
 	}
 
 	@Override
-	protected void sendTracingMessage() {
-
-		tracingHandler.sendInitialCheckpoint().ifPresent((event) -> {
+	protected void sendTracingMessage(){
+		tracingHandler.sendInitialCheckpoint().ifPresent(auditTracingEvent -> {
 			try {
-				audit(event);
+				audit((T)auditTracingEvent);
 			} catch (AuditException e) {
 				log.info("failed to audit tracing message: " + ExceptionUtils.toString(e));
 			}
 		});
-
 	}
+	
 
 	private void innerReconnect() {
 		try {

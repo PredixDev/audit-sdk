@@ -1,6 +1,7 @@
 package com.ge.predix.audit.sdk.routing;
 
-import com.ge.predix.audit.sdk.FailReport;
+import com.ge.predix.audit.sdk.ClientErrorCode;
+import com.ge.predix.audit.sdk.FailCode;
 import com.ge.predix.audit.sdk.message.AuditEvent;
 import lombok.*;
 
@@ -19,8 +20,8 @@ public class AuditRoutingCallbackKpis<T extends AuditEvent> {
     private T lastFailureEvent;
     private T AuditEventlastSuccessEvent;
     private String lastFailureDescription;
-    private FailReport lastFailureCode;
-
+    private FailCode lastFailureCode;
+    private ClientErrorCode lastClientErrorCode;
 
     public int getFailures(){
         return failureCommonCount.get() + failureCount.get();

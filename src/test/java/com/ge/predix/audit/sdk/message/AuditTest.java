@@ -1,6 +1,6 @@
 package com.ge.predix.audit.sdk.message;
 
-import com.ge.predix.audit.sdk.exception.UnmodifiableFieldException;
+import com.ge.predix.audit.sdk.exception.AuditValidationException;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -38,15 +38,10 @@ public class AuditTest {
                 message2.getMessageId(), is(false));
     }
 
-    @Test(expected = NullPointerException.class)
+    @Test(expected = AuditValidationException.class)
     public void auditMessageMandatoryFieldsTest(){
         AuditEventV2.builder().payload("Stam").build();
     }
 
-    @Ignore
-    @Test(expected = UnmodifiableFieldException.class)
-    public void auditMessageSetVersionTest() throws  UnmodifiableFieldException {
-        AuditEventV2.builder().payload("Stam").version(5).build();
-    }
 
 }

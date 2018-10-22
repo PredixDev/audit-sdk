@@ -5,7 +5,7 @@ package com.ge.predix.audit.sdk;
  */
 public class ConfigurationValidatorFactory {
 
-    private static ConfigurationValidatorWithDeprecatedTypeSupport configurationValidatorImpl = new ConfigurationValidatorWithDeprecatedTypeSupport();
+    private static ConfigurationValidatorImpl configurationValidatorImpl = new ConfigurationValidatorImpl();
 
     public static ConfigurationValidator getConfigurationValidator(){
         return configurationValidatorImpl;

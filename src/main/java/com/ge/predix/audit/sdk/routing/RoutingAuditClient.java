@@ -1,10 +1,7 @@
 package com.ge.predix.audit.sdk.routing;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ge.predix.audit.sdk.AuditClientState;
-import com.ge.predix.audit.sdk.CommonClientInterface;
-import com.ge.predix.audit.sdk.DirectMemoryMonitor;
-import com.ge.predix.audit.sdk.FailReport;
+import com.ge.predix.audit.sdk.*;
 import com.ge.predix.audit.sdk.config.AppNameConfig;
 import com.ge.predix.audit.sdk.config.RoutingAuditConfiguration;
 import com.ge.predix.audit.sdk.config.RoutingResourceConfig;
@@ -27,6 +24,7 @@ import com.ge.predix.audit.sdk.util.LoggerUtils;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Queues;
 import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
 
 import java.util.*;
@@ -126,7 +124,16 @@ public class RoutingAuditClient<T extends AuditEvent> {
         try {
             if (auditClientState.get() != AuditClientState.SHUTDOWN) {
                 this.auditClientState.set(AuditClientState.SHUTDOWN);
-                getRemainingEvents().forEach(e -> callback.onFailure(e, FailReport.NO_MORE_RETRY, "Audit client is shut down!"));
+                List<AuditEventFailReport<T>> failReports = new ArrayList<>();
+                getRemainingEvents().forEach(e ->
+                        failReports.add(AuditEventFailReport.<T>builder()
+                                .auditEvent(e)
+                                .failureReason(FailCode.NO_MORE_RETRY)
+                                .description("Audit client is shut down!" )
+                                .build()));
+                if(!failReports.isEmpty()) {
+                    callback.onFailure(Result.<T>builder().failReports(failReports).build());
+                }
                 executor.shutdownNow();
                 this.routingAuditPublisher.shutdown();
                 DirectMemoryMonitor.getInstance().shutdown();
@@ -166,7 +173,7 @@ public class RoutingAuditClient<T extends AuditEvent> {
         try {
             //Build httpClient
             ObjectMapper objectMapper = new ObjectMapper();
-            CloseableHttpClient httpClient = HttpClients.createDefault();
+            CloseableHttpClient httpClient = HttpClientBuilder.create().useSystemProperties().build();
 
             //Build TMS and tokenService and APPName clients
             AppNameConfig appNameConfig = configuration.getAppNameConfig();
@@ -179,9 +186,8 @@ public class RoutingAuditClient<T extends AuditEvent> {
             AuditTokenServiceClient tokenServiceClient = new AuditTokenServiceClient(systemConfig.getCanonicalServiceName(),
                     new TokenServiceClient(httpClient, systemConfig.getTokenServiceUrl(), objectMapper, systemConfig.getClientId(), systemConfig.getClientSecret()));
 
-            AuditEventsConverter converter = new AuditEventsConverter(new AppNameClient(tokenClient, appNameConfig.getAppNamePrefix()));
-
             RoutingResourceConfig routingResourceConfig = configuration.getRoutingResourceConfig();
+            AuditEventsConverter converter = new AuditEventsConverter(new AppNameClient(tokenClient, appNameConfig.getAppNamePrefix()));
             //shutdown client
             AuditAsyncShutdownHandler shutdownClient = new AuditAsyncShutdownHandler(configuration.getTenantAuditConfig(), tokenServiceClient,
                     Executors.newFixedThreadPool(routingResourceConfig.getNumOfConnections()));

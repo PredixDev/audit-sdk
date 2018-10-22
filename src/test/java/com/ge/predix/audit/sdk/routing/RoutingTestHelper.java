@@ -1,8 +1,7 @@
 package com.ge.predix.audit.sdk.routing;
 
 
-import com.ge.predix.audit.sdk.AuditClientAsyncImpl;
-import com.ge.predix.audit.sdk.FailReport;
+import com.ge.predix.audit.sdk.*;
 import com.ge.predix.audit.sdk.message.AuditEvent;
 import com.ge.predix.audit.sdk.routing.cache.impl.AuditAsyncClientHolder;
 import com.ge.predix.audit.sdk.routing.tms.Token;
@@ -37,30 +36,32 @@ public class RoutingTestHelper<T extends AuditEvent> implements RoutingAuditCall
     }
 
     @Override
-    public void onFailure(T event, FailReport report, String description) {
-        log.info("Failreport: "+report+" desc: "+description +" AuditEvent: "+event  );
+    public void onFailure(Result<T> result) {
+        AuditEventFailReport<T> failReport = result.getFailReports().iterator().next();
+        FailCode failCode = failReport.getFailureReason();
+        String description = failReport.getDescription();
+        T event =  failReport.getAuditEvent();
+        log.info("Failreport: "+failCode+" desc: "+description +" AuditEvent: " + event);
         AuditRoutingCallbackKpis<T>  kpi = getKpis(event.getTenantUuid());
         kpi.getFailureCount().incrementAndGet();
         kpi.setLastFailureEvent(event);
         kpi.setLastFailureDescription(description);
-        kpi.setLastFailureCode(report);
+        kpi.setLastFailureCode(failCode);
     }
 
     @Override
-    public void onFailure(FailReport report, String description, String auditServiceId, @Nullable String tenantUuid) {
-        log.info("Failreport: "+report+" desc: "+description + " tenantUuid: " + tenantUuid + " auditServiceId: "+auditServiceId);
+    public void onClientError(ClientErrorCode clientErrorCode, String description, String auditServiceId, @Nullable String tenantUuid) {
+        log.info("Failreport: "+clientErrorCode+" desc: "+description + " tenantUuid: " + tenantUuid + " auditServiceId: "+auditServiceId);
         AuditRoutingCallbackKpis<T>  kpi = getKpis(tenantUuid);
         kpi.setAuditServiceId(auditServiceId);
         kpi.setLastFailureDescription(description);
-        kpi.setLastFailureCode(report);
+        kpi.setLastClientErrorCode(clientErrorCode);
         kpi.getFailureCommonCount().incrementAndGet();
-
-
     }
 
     @Override
-    public void onSuccess(T event) {
-        AuditRoutingCallbackKpis<T>  kpi = getKpis(event.getTenantUuid());
+    public void onSuccess(List<T> events) {
+        AuditRoutingCallbackKpis<T>  kpi = getKpis(events.iterator().next().getTenantUuid());
         kpi.getSuccessCount().incrementAndGet();
     }
 

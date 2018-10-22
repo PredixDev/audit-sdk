@@ -11,11 +11,11 @@ import lombok.Getter;
 
 import java.util.List;
 
-public class AuditClientSync {
+public class AuditClientSync<T extends AuditEvent> {
 	
 	private static CustomLogger log = LoggerUtils.getLogger(AuditClientSync.class.getName());
 	
-	private final CommonClientInterface auditClientSyncImpl;
+	private final CommonClientInterface<T> auditClientSyncImpl;
     private final DirectMemoryMonitor directMemoryMonitor;
     @Getter(AccessLevel.PACKAGE)
     private final AuditConfiguration auditConfiguration;
@@ -28,15 +28,15 @@ public class AuditClientSync {
         }
         LoggerUtils.setLogLevelFromVcap();
         ConfigurationValidator configurationValidator = ConfigurationValidatorFactory.getConfigurationValidator();
-        configurationValidator.validateAuditConfiguration(configuration, AuditClientType.SYNC);
-        auditConfiguration = AuditConfiguration.fromConfiguration(configuration);
+        configurationValidator.validateAuditConfiguration(configuration);
+        auditConfiguration = configuration;
         directMemoryMonitor = DirectMemoryMonitor.getInstance();
         //because only prints in debug
         if(LoggerUtils.isDebugLogLevel()) {
             directMemoryMonitor.startMeasuringDirectMemory();
         }
-        TracingHandler tracingHandler = TracingHandlerFactory.newTracingHandler(auditConfiguration);
-        auditClientSyncImpl = new AuditClientSyncImpl(auditConfiguration, tracingHandler);
+        TracingHandler tracingHandler = TracingHandlerFactory.newTracingHandler(auditConfiguration, "SYNC");
+        auditClientSyncImpl = new AuditClientSyncImpl<>(auditConfiguration, tracingHandler);
     }
 
     /**
@@ -46,7 +46,7 @@ public class AuditClientSync {
      * @throws AuditException - if an unexpected error occurred with auditing.
      *         IllegalStateException - if the client was shutdown
      */
-    public AuditingResult audit(AuditEvent event) throws AuditException{
+    public AuditingResult audit(T event) throws AuditException{
         return auditClientSyncImpl.audit(event);
     }
 
@@ -57,7 +57,7 @@ public class AuditClientSync {
      * @throws AuditException - if an unexpected error occurred with auditing.
      *         IllegalStateException - if the client was shutdown
      */
-    public AuditingResult audit(List<AuditEvent> events) throws AuditException {
+    public AuditingResult audit(List<T> events) throws AuditException {
     	return auditClientSyncImpl.audit(events);
     }
 
@@ -117,7 +117,6 @@ public class AuditClientSync {
         	auditClientSyncImpl.setAuthToken(authToken);
             log.warning("new auth token was successfully set");
         } else {
-            log.warning("setAuthToken operation is not supported for this client configuration");
             throw new AuditException("setAuthToken operation is not supported for this client configuration");
         }
     }

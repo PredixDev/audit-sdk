@@ -12,14 +12,12 @@ import lombok.ToString;
 @ToString
 @AllArgsConstructor
 @Getter
-public class AuditingResult {
+public class AuditingResult<T extends AuditEvent> {
 
-	private static final AuditingResult empty = new AuditingResult(Collections.emptyList(), Collections.emptyList());
+	private List<AuditEventFailReport<T>> failedEvents;
+	private List<T> sentEvents;
 
-	private List<AuditEventFailReport> failedEvents;
-	private List<AuditEvent> sentEvents;
-
-	public static AuditingResult emptyResults(){
-		return empty;
+	public static <T extends AuditEvent> AuditingResult<T> emptyResults(){
+		 return new AuditingResult<T>(Collections.emptyList(), Collections.emptyList());
 	}
 }

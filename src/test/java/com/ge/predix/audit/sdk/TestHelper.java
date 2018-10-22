@@ -2,7 +2,6 @@ package com.ge.predix.audit.sdk;
 
 
 import com.ge.predix.audit.sdk.message.AuditEvent;
-import com.ge.predix.audit.sdk.validator.ValidatorReport;
 import lombok.ToString;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -14,7 +13,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Created by 212584872 on 1/18/2017.
  */
 @ToString
-public class TestHelper implements AuditCallback{
+public class TestHelper<T extends AuditEvent> implements AuditCallback<T> {
 
     Log log = LogFactory.getLog(TestHelper.class);
 
@@ -22,9 +21,12 @@ public class TestHelper implements AuditCallback{
     private AtomicInteger failureCommonCount;
     private AtomicInteger failureCount;
     private AtomicInteger successCount;
-    public AuditEvent lastFailureEvent, lastSuccessEvent;
+    public AuditEvent lastFailureEvent;
+    public List<AuditEvent> lastSuccessEventsBatch;
     String lastFailureDescription;
-    FailReport lastFailureCode;
+    FailCode lastFailureCode;
+    ClientErrorCode lastClientErrorCode;
+    List<AuditEventFailReport<T>> failReports;
 
     public TestHelper(){
         validateCount = new AtomicInteger(0);
@@ -35,32 +37,28 @@ public class TestHelper implements AuditCallback{
     }
 
     @Override
-    public void onValidate(AuditEvent event, List<ValidatorReport> reports) {
-        log.info("onValidate: "+event);
-        validateCount.incrementAndGet();
+    public void onFailure(Result<T> result) {
+        this.failReports = result.getFailReports();
+        AuditEventFailReport<T> report = failReports.iterator().next();
+        lastFailureCode = report.getFailureReason();
+        lastFailureDescription = report.getDescription();
+        lastFailureEvent = report.getAuditEvent();
+        log.info("Failreport: "+ lastFailureCode +" desc: "+ lastFailureDescription +" "+ lastFailureEvent);
+        failureCount.addAndGet(failReports.size());
     }
 
     @Override
-    public void onFailure(AuditEvent event, FailReport report, String description) {
-        log.info("Failreport: "+report+" desc: "+description +" "+event);
-        failureCount.incrementAndGet();
-        lastFailureEvent = event;
-        lastFailureDescription = description;
-        lastFailureCode = report;
-    }
-
-    @Override
-    public void onFailure(FailReport report, String description) {
-        log.info("Failreport: "+report+" desc: "+description);
+    public void onClientError(ClientErrorCode clientErrorCode, String description) {
+        log.info("ClientErrorCode: "+clientErrorCode+" desc: "+description);
         failureCommonCount.incrementAndGet();
-
+        lastClientErrorCode = clientErrorCode;
     }
 
     @Override
-    public void onSuccees(AuditEvent event) {
-        log.info("onSuccees: "+event);
-        successCount.incrementAndGet();
-        lastSuccessEvent = event;
+    public void onSuccess(List events) {
+        log.info("onSuccess: "+ events);
+        successCount.addAndGet(events.size());
+        lastSuccessEventsBatch = events;
     }
 
     public int getFailureCount(){

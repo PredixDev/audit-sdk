@@ -2,6 +2,7 @@ package com.ge.predix.audit.sdk;
 
 import static org.junit.Assert.*;
 
+import com.ge.predix.audit.sdk.message.AuditEnums;
 import com.ge.predix.audit.sdk.message.AuditEventV2;
 import org.junit.Test;
 
@@ -10,7 +11,14 @@ import com.ge.predix.audit.sdk.message.AuditEvent;
 public class AuditingResultContainerTest {
 	
 	AuditingResultContainer resultContainer = new AuditingResultContainer();
-	
+
+	AuditEventV2 auditEvent_1 = AuditEventV2.builder()
+			.categoryType(AuditEnums.CategoryType.ADMINISTRATIONS)
+			.eventType(AuditEnums.EventType.STARTUP_EVENT)
+			.classifier(AuditEnums.Classifier.FAILURE)
+			.publisherType(AuditEnums.PublisherType.APP_SERVICE)
+			.build();
+
 	@Test
 	public void getResult_emptyResult() {
 		AuditingResult result = resultContainer.getResult();
@@ -21,67 +29,63 @@ public class AuditingResultContainerTest {
 	
 	@Test
 	public void onFailure_newFailedEvent() {
-		AuditEvent event = new AuditEventV2();
-		FailReport reason = FailReport.BAD_ACK;
+		FailCode reason = FailCode.BAD_ACK;
 		String description = "bad ack";
 		
-		resultContainer.onFailure(event, reason, description);
+		resultContainer.onFailure(auditEvent_1, reason, description);
 		
-		AuditingResult result = resultContainer.getResult();
+		AuditingResult<AuditEvent> result = resultContainer.getResult();
 		assertTrue(result.getSentEvents().isEmpty());
 		assertEquals(1, result.getFailedEvents().size());
 		AuditEventFailReport report = result.getFailedEvents().get(0);
-		assertEquals(event, report.getAuditEvent());
+		assertEquals(auditEvent_1, report.getAuditEvent());
 		assertEquals(reason, report.getFailureReason());
 		assertEquals(description, report.getDescription());
 	}
 	
 	@Test
 	public void onFailure_failedEventAlreadyExists_reasonAndDescChange() {
-		AuditEvent event = new AuditEventV2();
-		FailReport reason = FailReport.BAD_ACK;
+		FailCode reason = FailCode.BAD_ACK;
 		String description = "bad ack";
-		FailReport reason2 = FailReport.NO_ACK;
+		FailCode reason2 = FailCode.NO_ACK;
 		String description2 = "no ack";
 		
-		resultContainer.onFailure(event, reason, description);
-		resultContainer.onFailure(event, reason2, description2);
+		resultContainer.onFailure(auditEvent_1, reason, description);
+		resultContainer.onFailure(auditEvent_1, reason2, description2);
 		
-		AuditingResult result = resultContainer.getResult();
+		AuditingResult<AuditEvent> result = resultContainer.getResult();
 		assertTrue(result.getSentEvents().isEmpty());
 		assertEquals(1, result.getFailedEvents().size());
 		AuditEventFailReport report = result.getFailedEvents().get(0);
-		assertEquals(event, report.getAuditEvent());
+		assertEquals(auditEvent_1, report.getAuditEvent());
 		assertEquals(reason2, report.getFailureReason());
 		assertEquals(description2, report.getDescription());
 	}
 	
 	@Test
 	public void onSuccess_newSuccessEvent() {
-		AuditEvent event = new AuditEventV2();
 		
-		resultContainer.onSuccess(event);
+		resultContainer.onSuccess(auditEvent_1);
 		
-		AuditingResult result = resultContainer.getResult();
+		AuditingResult<AuditEvent> result = resultContainer.getResult();
 		assertTrue(result.getFailedEvents().isEmpty());
 		assertEquals(1, result.getSentEvents().size());
 		AuditEvent successEvent = result.getSentEvents().get(0);
-		assertEquals(event, successEvent);
+		assertEquals(auditEvent_1, successEvent);
 	}
 	
 	@Test
 	public void onSuccess_successReplacingFailed() {
-		AuditEvent event = new AuditEventV2();
-		FailReport reason = FailReport.BAD_ACK;
+		FailCode reason = FailCode.BAD_ACK;
 		String description = "bad ack";
 		
-		resultContainer.onFailure(event, reason, description);
-		resultContainer.onSuccess(event);
+		resultContainer.onFailure(auditEvent_1, reason, description);
+		resultContainer.onSuccess(auditEvent_1);
 		
-		AuditingResult result = resultContainer.getResult();
+		AuditingResult<AuditEvent> result = resultContainer.getResult();
 		assertTrue(result.getFailedEvents().isEmpty());
 		assertEquals(1, result.getSentEvents().size());
 		AuditEvent successEvent = result.getSentEvents().get(0);
-		assertEquals(event, successEvent);
+		assertEquals(auditEvent_1, successEvent);
 	}
 }

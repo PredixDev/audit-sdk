@@ -14,10 +14,10 @@ import java.util.List;
 /**
  * Created by Martin Saad on 2/12/2017.
  */
-public class AuditClient {
+public class AuditClient<T extends AuditEvent> {
     private static CustomLogger log = LoggerUtils.getLogger(AuditClient.class.getName());
 
-    private final CommonClientInterface auditClientAsyncImpl;
+    private final CommonClientInterface<T> auditClientAsyncImpl;
     @Getter(AccessLevel.PACKAGE)
     private final AuditConfiguration auditConfiguration;
 
@@ -28,19 +28,19 @@ public class AuditClient {
      * @throws AuditException - when the configuration is invalid.
      * @throws EventHubClientException - when fail to build eventhub client.
      */
-    public AuditClient(AuditConfiguration configuration, AuditCallback callback)
+    public AuditClient(AuditConfiguration configuration, AuditCallback<T> callback)
             throws AuditException, EventHubClientException {
         LoggerUtils.setLogLevelFromVcap();
         ConfigurationValidator configurationValidator = ConfigurationValidatorFactory.getConfigurationValidator();
-        configurationValidator.validateAuditConfiguration(configuration, AuditClientType.ASYNC);
-        this.auditConfiguration = AuditConfiguration.fromConfiguration(configuration);
+        configurationValidator.validateAuditConfiguration(configuration);
+        this.auditConfiguration = configuration;
         DirectMemoryMonitor directMemoryMonitor = DirectMemoryMonitor.getInstance();
         //because only prints in debug
         if(LoggerUtils.isDebugLogLevel()) {
             directMemoryMonitor.startMeasuringDirectMemory();
         }
-        TracingHandler tracingHandler = TracingHandlerFactory.newTracingHandler(auditConfiguration);
-        auditClientAsyncImpl = new AuditClientAsyncImpl(auditConfiguration, callback, tracingHandler );
+        TracingHandler tracingHandler = TracingHandlerFactory.newTracingHandler(auditConfiguration, "ASYNC");
+        auditClientAsyncImpl = new AuditClientAsyncImpl<>(auditConfiguration, callback, tracingHandler );
     }
 
     /**
@@ -51,7 +51,7 @@ public class AuditClient {
      * @throws AuditException - if an unexpected error occurred with auditing.
      *         IllegalStateException - if the client was shutdown.
      */
-    public void audit(AuditEvent event) throws AuditException{
+    public void audit(T event) throws AuditException{
         auditClientAsyncImpl.audit(event);
     }
 
@@ -62,7 +62,7 @@ public class AuditClient {
      * @throws AuditException - if an unexpected error occurred with auditing.
      *         IllegalStateException - if the client was shutdown.
      */
-    public void audit(List<AuditEvent> events) throws AuditException {
+    public void audit(List<T> events) throws AuditException {
         auditClientAsyncImpl.audit(events);
     }
 
@@ -123,7 +123,6 @@ public class AuditClient {
             log.warning("new auth token was successfully set");
         }
         else{
-            log.warning("setAuthToken operation is not supported for this client configuration");
             throw new AuditException("setAuthToken operation is not supported for this client configuration");
         }
 

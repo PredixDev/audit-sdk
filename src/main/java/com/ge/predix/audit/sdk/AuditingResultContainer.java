@@ -4,30 +4,36 @@ import java.util.*;
 
 import com.ge.predix.audit.sdk.message.AuditEvent;
 
- class AuditingResultContainer {
+ class AuditingResultContainer<T extends AuditEvent> {
 	
-	private Map<String, AuditEventFailReport> failedEvents = new HashMap<>();
-	private Set<AuditEvent> sentEvents = new HashSet<>();
+	private Map<String, AuditEventFailReport<T>> failedEvents = new HashMap<>();
+	private Set<T> sentEvents = new HashSet<>();
 	
-	 AuditingResult getResult() {
-		return new AuditingResult(new ArrayList<AuditEventFailReport>(failedEvents.values()), new ArrayList<>(sentEvents));
+	 AuditingResult<T> getResult() {
+		return new AuditingResult<>(new ArrayList<>(failedEvents.values()), new ArrayList<>(sentEvents));
 	}
-	
-	 void onFailure(AuditEvent event, FailReport failReason, String description) {
-		AuditEventFailReport failedEvent = failedEvents.get(event.getMessageId());
+
+	 void onFailure(T event, FailCode failReason, String description) {
+		 onFailure(event, failReason, description, null);
+	 }
+
+	 void onFailure(T event, FailCode failReason, String description, Throwable throwable) {
+		AuditEventFailReport<T> failedEvent = failedEvents.get(event.getMessageId());
 		if (failedEvent == null) {
-			failedEvents.put(event.getMessageId(), AuditEventFailReport.builder()
+			failedEvents.put(event.getMessageId(), AuditEventFailReport.<T>builder()
 					.auditEvent(event)
 					.failureReason(failReason)
 					.description(description)
+					.throwable(throwable)
 					.build());
 		} else {
 			failedEvent.setFailureReason(failReason);
 			failedEvent.setDescription(description);
+			failedEvent.setThrowable(throwable);
 		}
 	}
 	
-	 void onSuccess(AuditEvent event) {
+	 void onSuccess(T event) {
 		failedEvents.remove(event.getMessageId());
 		sentEvents.add(event);
 	}

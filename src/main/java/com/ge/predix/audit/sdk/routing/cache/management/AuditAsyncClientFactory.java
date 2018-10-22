@@ -14,12 +14,10 @@ import com.ge.predix.audit.sdk.routing.tms.TmsServiceInstance;
 import com.ge.predix.audit.sdk.routing.tms.Token;
 import com.ge.predix.audit.sdk.util.CustomLogger;
 import com.ge.predix.audit.sdk.util.LoggerUtils;
-import com.ge.predix.audit.sdk.validator.ValidatorReport;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
-import java.util.Arrays;
 import java.util.List;
 
 import static com.ge.predix.audit.sdk.util.ExceptionUtils.swallowException;
@@ -101,25 +99,19 @@ public class AuditAsyncClientFactory<T extends AuditEvent>  {
                     .spaceName(tenantAuditConfig.getSpaceName())
                     .build();
 
-            return new AuditClientAsyncImpl(auditConfiguration, new TypedAuditCallback<T>() {
+            return new AuditClientAsyncImpl<>(auditConfiguration, new AuditCallback<T>() {
+
                 @Override
-                public void onValidate(T event, List<ValidatorReport> reports) {
-                    callback.onFailure(event, FailReport.VALIDATION_ERROR, Arrays.toString(reports.stream()
-                        .map(ValidatorReport::getOriginalMessage)
-                        .toArray()));
+                public void onFailure(Result<T> result) { callback.onFailure(result); }
+
+                @Override
+                public void onClientError(ClientErrorCode report, String description) { callback.onClientError(report, description, sharedAuditConfig.getAuditZoneId(), null); }
+
+                @Override
+                public void onSuccess(List<T> events) {
+                    callback.onSuccess(events);
                 }
-
-                @Override
-                public void onFailure(T event, FailReport report, String description) { callback.onFailure(event, report, description); }
-
-                @Override
-                public void onFailure(FailReport report, String description) { callback.onFailure(report, description, sharedAuditConfig.getAuditZoneId(), null); }
-
-                @Override
-                public void onSuccees(T event) {
-                    callback.onSuccess(event);
-                }
-            }, TracingHandlerFactory.newTracingHandler(auditConfiguration));
+            }, TracingHandlerFactory.newTracingHandler(auditConfiguration, "ROUTING"));
         } catch (Exception e) {
             throw new RoutingAuditException("Could not initialize shared audit client", e);
         }
@@ -150,36 +142,30 @@ public class AuditAsyncClientFactory<T extends AuditEvent>  {
                     .authToken(token.getAccessToken())
                     .build();
 
-            return new AuditClientAsyncImpl(auditConfiguration, new TypedAuditCallback<T>() {
+            return new AuditClientAsyncImpl<>(auditConfiguration, new AuditCallback<T>() {
+
                 @Override
-                public void onValidate(T event, List<ValidatorReport> reports) {
-                    callback.onFailure(event, FailReport.VALIDATION_ERROR, Arrays.toString(reports.stream()
-                            .map(ValidatorReport::getOriginalMessage)
-                            .toArray()));
+                public void onFailure(Result<T> result) {
+                    callback.onFailure(result);
                 }
 
                 @Override
-                public void onFailure(T event, FailReport report, String description) {
-                    callback.onFailure(event, report, description);
-                }
-
-                @Override
-                public void onFailure(FailReport report, String description) {
+                public void onClientError(ClientErrorCode report, String description) {
                     log.info("Got failure for audit zone %s and tenantUuid %s, failure: %s, description: %s", instanceId, tenantAuditConfig, report, description);
-                    if (report == FailReport.AUTHENTICATION_FAILURE) {
+                    if (report == ClientErrorCode.AUTHENTICATION_FAILURE) {
                         dedicatedClients.get(tenantUuid)
                                 .ifPresent((cacheObject) -> swallowException( () ->
                                                 cacheObject.refreshNewToken(tokenServiceClient)
                                         , String.format("Audit client %s of tenant %s got Authentication failure, token renew failed as well", instanceId, tenantUuid)));
                     }
-                    callback.onFailure(report, description, instanceId, tenantUuid);
+                    callback.onClientError(report, description, instanceId, tenantUuid);
                 }
 
                 @Override
-                public void onSuccees(T event) {
-                    callback.onSuccess(event);
+                public void onSuccess(List<T> events) {
+                    callback.onSuccess(events);
                 }
-            }, TracingHandlerFactory.newTracingHandler(auditConfiguration));
+            }, TracingHandlerFactory.newTracingHandler(auditConfiguration, "ROUTING"));
         } catch (Exception e) {
             throw new RoutingAuditException(String.format(
                     "Failed to initialize audit client for tenantUuid %s, audit zone id: %s"

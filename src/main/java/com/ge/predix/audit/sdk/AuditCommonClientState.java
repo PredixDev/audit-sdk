@@ -9,7 +9,7 @@ public enum AuditCommonClientState {
         CONNECTING,     //while reconnecting/ building client
         CONNECTED,      //we finished building the client successfully
         ACKED,          //we got an ack confirming the connection
-        DISCONNECTED,   //after we got a "failed precondition" onFailure call back
+        DISCONNECTED,   //after we got a "failed precondition" onClientError call back
         SHUTDOWN        //client was shut-down. a non-recoverable action.
 
 }

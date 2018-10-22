@@ -11,8 +11,9 @@ import lombok.ToString;
 @Data
 @Builder
 @AllArgsConstructor
-public class AuditEventFailReport {
-	private AuditEvent auditEvent;
-	private FailReport failureReason;
+public class AuditEventFailReport<T extends AuditEvent> {
+	private T auditEvent;
+	private FailCode failureReason;
 	private String description;
+	private Throwable throwable;
 }

@@ -20,17 +20,16 @@ import static com.ge.predix.audit.sdk.util.ExceptionUtils.swallowException;
 /**
  * Created by 212582776 on 2/20/2018.
  */
-public class ConfigurationValidatorWithDeprecatedTypeSupport implements ConfigurationValidator {
+public class ConfigurationValidatorImpl implements ConfigurationValidator {
 
-    private static CustomLogger log = LoggerUtils.getLogger(ConfigurationValidatorWithDeprecatedTypeSupport.class.getName());
+    private static CustomLogger log = LoggerUtils.getLogger(ConfigurationValidatorImpl.class.getName());
 
     //TODO add tests
     @Override
-    public void validateAuditConfiguration( final AuditConfiguration configuration, final  AuditClientType auditClientType) throws AuditException {
+    public void validateAuditConfiguration( final AuditConfiguration configuration) throws AuditException {
         if (configuration == null) {
             throw new AuditException("Could not initialize audit client. auditConfiguration is null.");
         }
-        verifyClientType(configuration, auditClientType);
         verifyAppName(configuration);
         verifyTracingConfig(configuration);
         verifyParamsRanges(configuration);
@@ -56,18 +55,11 @@ public class ConfigurationValidatorWithDeprecatedTypeSupport implements Configur
         }
     }
 
-    private void verifyClientType(AuditConfiguration configuration, AuditClientType auditClientType) throws AuditException {
-        if(configuration.getClientType() != null && auditClientType != configuration.getClientType()){
-            throw new AuditException("auditClientType is inconsistent with the created client type. This property is deprecated and should not be used");
-        }
-    }
-
     private void verifyParamsRanges(AuditConfiguration configuration) throws AuditException {
         //make sure all parameters are in range
         Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
         Set<ConstraintViolation<AuditConfiguration>> violations = validator.validate(configuration);
         if (!violations.isEmpty()) {
-            log.warning("invalid configuration: " + violations);
             throw new AuditException("invalid configuration: " + violations);
         }
     }
@@ -83,11 +75,9 @@ public class ConfigurationValidatorWithDeprecatedTypeSupport implements Configur
                 try {
                     new URIBuilder(tracingUrl).build();
                 } catch (URISyntaxException e) {
-                    log.warning("tracing URL is invalid: " + tracingUrl);
-                    throw new AuditException("tracing configuration is invalid");
+                    throw new AuditException("tracing URL is invalid: " + tracingUrl, e);
                 }
             } else {
-                log.warning("tracing configuration is invalid");
                 throw new AuditException("tracing configuration is invalid");
             }
         }

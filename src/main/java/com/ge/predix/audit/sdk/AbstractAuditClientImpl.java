@@ -3,11 +3,10 @@ package com.ge.predix.audit.sdk;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ge.predix.audit.sdk.config.AuditConfiguration;
 import com.ge.predix.audit.sdk.exception.AuditException;
+import com.ge.predix.audit.sdk.message.AuditEvent;
 import com.ge.predix.audit.sdk.util.CustomLogger;
 import com.ge.predix.audit.sdk.util.LoggerUtils;
-import com.ge.predix.audit.sdk.validator.ValidatorService;
-import com.ge.predix.audit.sdk.validator.ValidatorServiceImpl;
-import com.ge.predix.eventhub.Ack;
+import com.ge.predix.eventhub.stub.Ack;
 import com.ge.predix.eventhub.EventHubClientException;
 import com.ge.predix.eventhub.client.Client;
 import com.ge.predix.eventhub.configuration.EventHubConfiguration;
@@ -25,7 +24,7 @@ import java.util.logging.Level;
 
 import static com.ge.predix.audit.sdk.util.LoggerUtils.generateLogPrefix;
 
-public abstract class AbstractAuditClientImpl implements CommonClientInterface {
+ public  abstract class AbstractAuditClientImpl<T extends AuditEvent> implements CommonClientInterface<T> {
 
 	public static final String NO_ACK_WAS_RECEIVED = "No ACK was received";
 
@@ -43,9 +42,6 @@ public abstract class AbstractAuditClientImpl implements CommonClientInterface {
 	protected long noAckLimit;
 
 	protected final boolean automaticTokenRenew;
-
-	@Setter(AccessLevel.PACKAGE)
-	protected ValidatorService validatorService;
 
 	@Setter(AccessLevel.PACKAGE)
 	protected ObjectMapper om;
@@ -78,7 +74,6 @@ public abstract class AbstractAuditClientImpl implements CommonClientInterface {
 		this.om = new ObjectMapper();
 		this.retryCount = configuration.getMaxRetryCount();
 		this.noAckLimit = configuration.getRetryIntervalMillis();
-		this.validatorService = new ValidatorServiceImpl();
 		this.automaticTokenRenew = (configuration.getAuthenticationMethod() != AuthenticationMethod.AUTH_TOKEN );
 
 		if(configuration.isTraceEnabled()){

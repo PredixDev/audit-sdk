@@ -4,8 +4,8 @@ import com.ge.predix.audit.sdk.config.AuditConfiguration;
 import com.ge.predix.audit.sdk.exception.AuditException;
 import com.ge.predix.audit.sdk.message.tracing.Checkpoint;
 import com.ge.predix.audit.sdk.message.tracing.LifeCycleEnum;
-import com.ge.predix.eventhub.Ack;
-import com.ge.predix.eventhub.AckStatus;
+import com.ge.predix.eventhub.stub.Ack;
+import com.ge.predix.eventhub.stub.AckStatus;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -30,13 +30,12 @@ public class TracingHandlerImplTest {
                 .bulkMode(false)
                 .traceEnabled(true)
                 .retryIntervalMillis(2000)
-                .clientType(AuditClientType.ASYNC)
                 .build();
     TracingHandlerImpl tracingHandler;
 
     @Before
     public void init() throws AuditException {
-        tracingHandler = new TracingHandlerImpl(goodConfiguration);
+        tracingHandler = new TracingHandlerImpl(goodConfiguration,"");
     }
 
     @Test

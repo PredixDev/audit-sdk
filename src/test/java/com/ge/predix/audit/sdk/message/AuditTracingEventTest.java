@@ -2,17 +2,8 @@ package com.ge.predix.audit.sdk.message;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.http.HttpHost;
-import org.apache.http.client.config.RequestConfig;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.util.EntityUtils;
 import org.junit.Test;
 
-import java.io.IOException;
-import java.util.Properties;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.is;

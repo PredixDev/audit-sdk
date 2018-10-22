@@ -2,7 +2,6 @@ package com.ge.predix.audit.sdk;
 
 import com.ge.predix.audit.sdk.message.AuditEvent;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -12,15 +11,14 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Created by Martin Saad on 1/30/2017.
  */
 @Data
-@Builder(builderClassName = "EventContainerBuilder")
 @NoArgsConstructor
 @AllArgsConstructor
-public class EventContainer {
-    private AuditEvent auditEvent;
+public class EventContainer<T extends AuditEvent> {
+    private T auditEvent;
     private AtomicInteger numberOfRetriesMade = new AtomicInteger(0);
-    private AuditEventFailReport auditEventFailReport;
+    private AuditEventFailReport<T> auditEventFailReport;
 
-     EventContainer(AuditEvent auditEvent){
+     EventContainer(T auditEvent){
         this.auditEvent = auditEvent;
     }
 
@@ -28,15 +26,11 @@ public class EventContainer {
         return numberOfRetriesMade.incrementAndGet();
     }
 
-     void setFailReport(FailReport failReport, String description){
-        this.auditEventFailReport = AuditEventFailReport.builder()
+     void setFailReport(FailCode failCode, String description){
+        this.auditEventFailReport = AuditEventFailReport.<T>builder()
                 .auditEvent(this.auditEvent)
-                .failureReason(failReport)
+                .failureReason(failCode)
                 .description(description)
                 .build();
-    }
-
-     static class EventContainerBuilder {
-        private AtomicInteger numberOfRetriesMade = new AtomicInteger(0);
     }
 }

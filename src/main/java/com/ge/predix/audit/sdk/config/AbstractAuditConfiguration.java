@@ -1,13 +1,14 @@
 package com.ge.predix.audit.sdk.config;
 
 import com.ge.predix.audit.sdk.config.vcap.VcapApplication;
-import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.*;
 
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
 @AllArgsConstructor
-@Data
+@Getter
+@ToString
+@EqualsAndHashCode
 public abstract class AbstractAuditConfiguration {
     public static final int MAX_RETRY_COUNT = 5;
     public static final int DEFAULT_RETRY_COUNT = 2;
@@ -38,8 +39,8 @@ public abstract class AbstractAuditConfiguration {
 
     public void updateAppNameAndSpace(VcapApplication vcapApplication) {
         if (null != vcapApplication) {
-            setCfAppName(vcapApplication.getAppName());
-            setSpaceName(vcapApplication.getSpaceName());
+            cfAppName = vcapApplication.getAppName();
+            spaceName = vcapApplication.getSpaceName();
         }
     }
 

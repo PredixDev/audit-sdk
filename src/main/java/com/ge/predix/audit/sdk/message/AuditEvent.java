@@ -9,9 +9,13 @@ import java.io.Serializable;
  */
 public interface AuditEvent extends Serializable, Cloneable {
     int getVersion();
-    void setMessageId(String messageId);
     String getMessageId();
     String getTenantUuid();
+
+    /**
+     * @Throws @AuditValidationException
+     * @return cloned Object
+     */
     AuditEvent clone();
     default boolean hasTenantUuid() {
         return !StringUtil.isNullOrEmpty(this.getTenantUuid());
