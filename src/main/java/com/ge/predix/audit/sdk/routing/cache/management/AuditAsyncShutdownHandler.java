@@ -1,6 +1,7 @@
 package com.ge.predix.audit.sdk.routing.cache.management;
 
 import com.ge.predix.audit.sdk.config.TenantAuditConfig;
+import com.ge.predix.audit.sdk.message.AuditEvent;
 import com.ge.predix.audit.sdk.routing.cache.impl.AuditAsyncClientHolder;
 import com.ge.predix.audit.sdk.routing.tms.AuditTokenServiceClient;
 import com.ge.predix.audit.sdk.util.CustomLogger;
@@ -14,7 +15,7 @@ import java.util.logging.Level;
 
 import static com.ge.predix.audit.sdk.util.ExceptionUtils.swallowException;
 
-public class AuditAsyncShutdownHandler {
+public class AuditAsyncShutdownHandler<T extends AuditEvent> {
 
     private static CustomLogger log = LoggerUtils.getLogger(AuditAsyncShutdownHandler.class.getName());
 
@@ -28,7 +29,7 @@ public class AuditAsyncShutdownHandler {
         this.shutdownExecutor = shutdownExecutor;
     }
 
-    public void handleClientRemoval(RemovalNotification<String, AuditAsyncClientHolder> removalEvent) {
+    public void handleClientRemoval(RemovalNotification<String, AuditAsyncClientHolder<T>> removalEvent) {
         try {
             if (removalEvent.wasEvicted()) {
                 handleEviction(removalEvent);
@@ -43,18 +44,18 @@ public class AuditAsyncShutdownHandler {
 
     }
 
-    private void handleNotEviction(RemovalNotification<String, AuditAsyncClientHolder> notification) {
+    private void handleNotEviction(RemovalNotification<String, AuditAsyncClientHolder<T>> notification) {
         //Explicit - removed, replaced - new audit zone id or shutdown all
-        AuditAsyncClientHolder cacheObject = notification.getValue();
+        AuditAsyncClientHolder<T> cacheObject = notification.getValue();
         log.info("Closing immediately audit client connection for audit zone id %s and tenant %s. removal cause: %s",
                 cacheObject.getAuditZoneId(), cacheObject.getTenantUuid(), notification.getCause().name());
         cacheObject.getClient().shutdown();
     }
 
-    private void handleEviction(RemovalNotification<String, AuditAsyncClientHolder> notification) {
+    private void handleEviction(RemovalNotification<String, AuditAsyncClientHolder<T>> notification) {
         //Collected expired or size.
         shutdownExecutor.submit(() -> {
-            AuditAsyncClientHolder cacheObject = notification.getValue();
+            AuditAsyncClientHolder<T> cacheObject = notification.getValue();
             log.info("Shutting down audit client connection for audit zone id %s and tenant %s. removal cause: %s",
                     cacheObject.getAuditZoneId(), cacheObject.getTenantUuid(), notification.getCause().name());
             swallowException(()-> cacheObject.refreshToken(tokenServiceClient, timeToWait), String.format("Failed to renew token for tenantUuid %s and audit zone id %s while shutting down",
@@ -71,7 +72,7 @@ public class AuditAsyncShutdownHandler {
         this.shutdownExecutor.shutdown();
     }
 
-    public void gracefulShutdown(List<AuditAsyncClientHolder> holderList) throws InterruptedException {
+    public void gracefulShutdown(List<AuditAsyncClientHolder<T>> holderList) throws InterruptedException {
         holderList.forEach(auditAsyncClientHolder -> shutdownExecutor.submit( () -> {
             log.info("gracefulShutdown audit zone %s of tenant %s", auditAsyncClientHolder.getAuditZoneId(), auditAsyncClientHolder.getTenantUuid());
             auditAsyncClientHolder.getClient().gracefulShutdown();

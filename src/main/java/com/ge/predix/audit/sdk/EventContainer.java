@@ -26,11 +26,12 @@ public class EventContainer<T extends AuditEvent> {
         return numberOfRetriesMade.incrementAndGet();
     }
 
-     void setFailReport(FailCode failCode, String description){
+     void setFailReport(FailCode failCode, String description, Throwable e) {
         this.auditEventFailReport = AuditEventFailReport.<T>builder()
                 .auditEvent(this.auditEvent)
                 .failureReason(failCode)
                 .description(description)
+                .throwable(e)
                 .build();
     }
 }

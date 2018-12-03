@@ -5,7 +5,7 @@
 
     <groupId>com.ge.predix.audit</groupId>
     <artifactId>audit-sdk</artifactId>
-    <version>2.0.0</version>
+    <version>2.1.0</version>
     <packaging>jar</packaging>
 
     <name>audit-sdk</name>
@@ -16,11 +16,44 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <powermock.version>1.7.1</powermock.version>
-        <jackson.version>2.9.4</jackson.version>
+        <jackson.version>2.9.6</jackson.version>
         <eventhub.sdk.version>2.0.7</eventhub.sdk.version>
         <lombok.version>1.18.0</lombok.version>
         <jacoco.version>0.7.9</jacoco.version>
+        <guava.version>26.0-jre</guava.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+
+            <dependency>
+                <groupId>com.google.guava</groupId>
+                <artifactId>guava</artifactId>
+                <version>${guava.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-core</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-databind</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-annotations</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.httpcomponents</groupId>
+                <artifactId>httpclient</artifactId>
+                <version>4.5.3</version>
+            </dependency>
+
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <dependency>
@@ -40,27 +73,9 @@
             <version>RELEASE</version>
         </dependency>
         <dependency>
-            <groupId>com.ge.predix.eventhub</groupId>
-            <artifactId>predix-event-hub-sdk</artifactId>
-            <version>${eventhub.sdk.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.apache.httpcomponents</groupId>
-                    <artifactId>httpclient</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.fasterxml.jackson.core</groupId>
-                    <artifactId>jackson-core</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.fasterxml.jackson.core</groupId>
-                    <artifactId>jackson-databind</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.fasterxml.jackson.core</groupId>
-                    <artifactId>jackson-annotations</artifactId>
-                </exclusion>
-            </exclusions>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>${guava.version}</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
@@ -76,6 +91,31 @@
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-annotations</artifactId>
             <version>${jackson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
+            <version>4.5.3</version>
+        </dependency>
+        <dependency>
+            <groupId>com.ge.predix.eventhub</groupId>
+            <artifactId>predix-event-hub-sdk</artifactId>
+            <version>${eventhub.sdk.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.hibernate</groupId>
+            <artifactId>hibernate-validator</artifactId>
+            <version>5.2.4.Final</version>
+        </dependency>
+        <dependency>
+            <groupId>javax.el</groupId>
+            <artifactId>javax.el-api</artifactId>
+            <version>3.0.1-b04</version>
+        </dependency>
+        <dependency>
+            <groupId>joda-time</groupId>
+            <artifactId>joda-time</artifactId>
+            <version>2.9.7</version>
         </dependency>
         <dependency>
             <groupId>org.mockito</groupId>
@@ -94,26 +134,6 @@
             <artifactId>assertj-core</artifactId>
             <version>3.5.1</version>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.hibernate</groupId>
-            <artifactId>hibernate-validator</artifactId>
-            <version>5.2.4.Final</version>
-        </dependency>
-        <dependency>
-            <groupId>javax.el</groupId>
-            <artifactId>javax.el-api</artifactId>
-            <version>3.0.1-b04</version>
-        </dependency>
-        <dependency>
-            <groupId>joda-time</groupId>
-            <artifactId>joda-time</artifactId>
-            <version>2.9.7</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.httpcomponents</groupId>
-            <artifactId>httpclient</artifactId>
-            <version>4.5.3</version>
         </dependency>
         <dependency>
             <groupId>org.powermock</groupId>
@@ -143,10 +163,10 @@
             <plugin>
                 <groupId>org.whitesource</groupId>
                 <artifactId>whitesource-maven-plugin</artifactId>
-                <version>3.2.2</version>
+                <version>18.2.2</version>
                 <configuration>
-                    <orgToken>2c813327-ae40-477e-89c9-00af9b84757b</orgToken>
-                    <product>GED_PREDIX_AuditService</product>
+                    <orgToken>${whitesource.orgToken}</orgToken>
+                    <product>${whitesource.product}</product>
                 </configuration>
             </plugin>
             <plugin>

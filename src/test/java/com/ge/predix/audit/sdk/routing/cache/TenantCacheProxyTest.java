@@ -20,7 +20,6 @@ import com.ge.predix.audit.sdk.routing.tms.*;
 import com.ge.predix.eventhub.EventHubClientException;
 import com.google.common.util.concurrent.MoreExecutors;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -83,7 +82,7 @@ public class TenantCacheProxyTest {
         when(tokenClient.getToken(false)).thenReturn(new Token("access", "bearer", 100, "stuf.app.kuku", "jti"));
         sharedClients = spy(new CommonClientInterfaceICacheImpl(5000, 100));
         dedicatedClients = spy(new AsyncClientHolderICacheImpl(new AuditAsyncShutdownHandler(configuration.getTenantAuditConfig(), auditTokenServiceClient, MoreExecutors.newDirectExecutorService()), mock(AuditCacheRefresher.class), 5000, 5000, 5000));
-        factory = spy(new AuditAsyncClientFactory<>(testHelper, configuration, auditTmsClient, auditTokenServiceClient, sharedClients, dedicatedClients));
+        factory = spy(new AuditAsyncClientFactory(testHelper, configuration, auditTmsClient, auditTokenServiceClient, sharedClients, dedicatedClients));
         proxy = new TenantCacheProxy(dedicatedClients, sharedClients, auditTokenServiceClient, factory, 1000);
     }
 
@@ -367,7 +366,7 @@ public class TenantCacheProxyTest {
     }
 
     @Test
-    public void shutdownClosingSharedAuditClient() {
+    public void shutdownClosingSharedAuditClient() throws AuditException {
         AuditEventV2 sharedEvent = AuditEventV2.builder()
                 .eventType(AuditEnums.EventType.SHUTDOWN_EVENT)
                 .categoryType(AuditEnums.CategoryType.ADMINISTRATIONS)

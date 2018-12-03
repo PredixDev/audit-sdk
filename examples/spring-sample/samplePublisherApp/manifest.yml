@@ -1,0 +1,16 @@
+applications:
+- name: samplePublisherApp
+  disk: 500mb
+  memory: 1G
+  timeout: 180
+  path: target/samplePublisherApp-2.0.0.jar
+  instances: 1
+  buildpack: https://github.com/cloudfoundry/java-buildpack.git
+  services:
+    - {YOUR_AUDIT_SERVICE_INSTANCE_NAME}
+
+env:
+    AUDIT_SERVICE_NAME: {NAME_OF_AUDIT_SERVICE_IN_CF_MARKETPLACE}
+    AUDIT_UAA_URL: {URL_OF_AUDIT_UAA}/oauth/token
+    AUDIT_UAA_CLIENT_ID: {AUDIT_UAA_CLIENT_ID}
+    AUDIT_UAA_CLIENT_SECRET: {CLIENT_SECRET_OF_AUDIT_UAA}

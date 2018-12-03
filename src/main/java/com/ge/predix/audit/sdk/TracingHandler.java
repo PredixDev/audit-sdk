@@ -1,12 +1,11 @@
 package com.ge.predix.audit.sdk;
 
+import java.util.Optional;
+
 import com.ge.predix.audit.sdk.message.AuditEvent;
 import com.ge.predix.audit.sdk.message.AuditTracingEvent;
-import com.ge.predix.audit.sdk.message.tracing.Checkpoint;
 import com.ge.predix.audit.sdk.message.tracing.LifeCycleEnum;
 import com.ge.predix.eventhub.stub.Ack;
-
-import java.util.Optional;
 
 /**
  * Created by 212582776 on 2/21/2018.

@@ -1,28 +1,26 @@
 package com.ge.predix.audit.sdk;
 
+import static com.ge.predix.audit.sdk.util.ExceptionUtils.swallowException;
+
+import java.net.URISyntaxException;
+import java.util.Set;
+
+import javax.validation.ConstraintViolation;
+import javax.validation.Validation;
+import javax.validation.Validator;
+
+import org.apache.http.client.utils.URIBuilder;
+
 import com.ge.predix.audit.sdk.config.AbstractAuditConfiguration;
 import com.ge.predix.audit.sdk.config.AuditConfiguration;
 import com.ge.predix.audit.sdk.config.RoutingAuditConfiguration;
 import com.ge.predix.audit.sdk.config.vcap.VcapLoaderServiceImpl;
 import com.ge.predix.audit.sdk.exception.AuditException;
-import com.ge.predix.audit.sdk.util.CustomLogger;
-import com.ge.predix.audit.sdk.util.LoggerUtils;
-import org.apache.http.client.utils.URIBuilder;
-
-import javax.validation.ConstraintViolation;
-import javax.validation.Validation;
-import javax.validation.Validator;
-import java.net.URISyntaxException;
-import java.util.Set;
-
-import static com.ge.predix.audit.sdk.util.ExceptionUtils.swallowException;
 
 /**
  * Created by 212582776 on 2/20/2018.
  */
 public class ConfigurationValidatorImpl implements ConfigurationValidator {
-
-    private static CustomLogger log = LoggerUtils.getLogger(ConfigurationValidatorImpl.class.getName());
 
     //TODO add tests
     @Override

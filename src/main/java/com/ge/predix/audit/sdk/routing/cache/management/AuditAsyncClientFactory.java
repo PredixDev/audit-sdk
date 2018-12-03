@@ -27,12 +27,12 @@ public class AuditAsyncClientFactory<T extends AuditEvent>  {
 
     private static CustomLogger log = LoggerUtils.getLogger(AuditAsyncClientFactory.class.getName());
 
-    private final ICache<String, CommonClientInterface> sharedTenants;
-    private final ICache<String, AuditAsyncClientHolder> dedicatedClients;
+    private final ICache<String, CommonClientInterface<T>> sharedTenants;
+    private final ICache<String, AuditAsyncClientHolder<T>> dedicatedClients;
     private final AuditTmsClient tmsClient;
     private final AuditTokenServiceClient tokenServiceClient;
     @Getter
-    private final AuditClientAsyncImpl sharedClient;
+    private final AuditClientAsyncImpl<T> sharedClient;
     private final RoutingAuditConfiguration configuration;
     private final RoutingAuditCallback<T> callback;
 
@@ -40,8 +40,8 @@ public class AuditAsyncClientFactory<T extends AuditEvent>  {
                                    RoutingAuditConfiguration configuration,
                                    AuditTmsClient tmsClient,
                                    AuditTokenServiceClient tokenServiceClient,
-                                   ICache<String, CommonClientInterface> sharedTenants,
-                                   ICache<String, AuditAsyncClientHolder> dedicatedClients) {
+                                   ICache<String, CommonClientInterface<T>> sharedTenants,
+                                   ICache<String, AuditAsyncClientHolder<T>> dedicatedClients) {
 
         this.sharedTenants = sharedTenants;
         this.dedicatedClients = dedicatedClients;
@@ -52,28 +52,28 @@ public class AuditAsyncClientFactory<T extends AuditEvent>  {
         this.sharedClient = buildSharedClient(configuration, callback);
     }
 
-    public CommonClientInterface createClient(String tenantUuid) {
+    public CommonClientInterface<T> createClient(String tenantUuid) {
         return tmsClient.fetchServiceInstance(tenantUuid)
                 .map(instance -> getDedicatedClient(instance, tenantUuid))
                 .orElseGet(()-> getSharedClient(tenantUuid));
     }
 
-    private CommonClientInterface getSharedClient(String tenantUuid) {
+    private CommonClientInterface<T> getSharedClient(String tenantUuid) {
         log.warning("Update shared tenant cache that tenantUuid %s is shared", tenantUuid);
         return sharedTenants.put(tenantUuid, getSharedClient());
     }
 
-    private CommonClientInterface getDedicatedClient(TmsServiceInstance<AuditServiceCredentials> instance, String tenantUuid) {
+    private CommonClientInterface<T> getDedicatedClient(TmsServiceInstance<AuditServiceCredentials> instance, String tenantUuid) {
         log.warning("Building audit client from TMS service instance %s and tenantUuid %s", instance, tenantUuid);
         Token token = tokenServiceClient.getToken(tenantUuid);
-        AuditClientAsyncImpl clientAsync = buildClient(instance.getCredentials(), configuration.getTenantAuditConfig(),
+        AuditClientAsyncImpl<T> clientAsync = buildClient(instance.getCredentials(), configuration.getTenantAuditConfig(),
                 token, tenantUuid, instance.getServiceInstanceUuid());
-        return dedicatedClients.put(tenantUuid, new AuditAsyncClientHolder(clientAsync, tenantUuid,
+        return dedicatedClients.put(tenantUuid, new AuditAsyncClientHolder<T>(clientAsync, tenantUuid,
                 instance.getServiceInstanceUuid(), token)).getClient();
 
     }
 
-    private AuditClientAsyncImpl buildSharedClient(RoutingAuditConfiguration configuration, RoutingAuditCallback<T> callback) {
+    private AuditClientAsyncImpl<T> buildSharedClient(RoutingAuditConfiguration configuration, RoutingAuditCallback<T> callback) {
         try {
             SharedAuditConfig sharedAuditConfig = configuration.getSharedAuditConfig();
             TenantAuditConfig tenantAuditConfig = configuration.getTenantAuditConfig();
@@ -102,7 +102,7 @@ public class AuditAsyncClientFactory<T extends AuditEvent>  {
             return new AuditClientAsyncImpl<>(auditConfiguration, new AuditCallback<T>() {
 
                 @Override
-                public void onFailure(Result<T> result) { callback.onFailure(result); }
+                public void onFailure(AuditAsyncResult<T> result) { callback.onFailure(result); }
 
                 @Override
                 public void onClientError(ClientErrorCode report, String description) { callback.onClientError(report, description, sharedAuditConfig.getAuditZoneId(), null); }
@@ -118,7 +118,7 @@ public class AuditAsyncClientFactory<T extends AuditEvent>  {
 
     }
 
-    private AuditClientAsyncImpl buildClient(AuditServiceCredentials credentials, TenantAuditConfig tenantAuditConfig, Token token, String tenantUuid, String instanceId)  {
+    private AuditClientAsyncImpl<T> buildClient(AuditServiceCredentials credentials, TenantAuditConfig tenantAuditConfig, Token token, String tenantUuid, String instanceId)  {
         log.info("Initializing dedicated audit client with zone %s for tenantUuid %s, available scopes: {%s}",
                 instanceId, tenantUuid, token.getScope());
         try {
@@ -145,7 +145,7 @@ public class AuditAsyncClientFactory<T extends AuditEvent>  {
             return new AuditClientAsyncImpl<>(auditConfiguration, new AuditCallback<T>() {
 
                 @Override
-                public void onFailure(Result<T> result) {
+                public void onFailure(AuditAsyncResult<T> result) {
                     callback.onFailure(result);
                 }
 

@@ -1,6 +1,7 @@
 package com.ge.predix.audit.sdk.routing.cache.impl;
 
 
+import com.ge.predix.audit.sdk.message.AuditEvent;
 import com.ge.predix.audit.sdk.routing.cache.ICache;
 import com.ge.predix.audit.sdk.routing.cache.management.AuditAsyncShutdownHandler;
 import com.ge.predix.audit.sdk.routing.cache.management.AuditCacheRefresher;
@@ -16,15 +17,15 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-public class AsyncClientHolderICacheImpl implements ICache<String, AuditAsyncClientHolder> {
+public class AsyncClientHolderICacheImpl<T extends AuditEvent> implements ICache<String, AuditAsyncClientHolder<T>> {
 
     private static CustomLogger log = LoggerUtils.getLogger(AsyncClientHolderICacheImpl.class.getName());
 
-    private final Cache<String, AuditAsyncClientHolder> tenantClientCache;
-    private final AuditAsyncShutdownHandler shutdownHandler;
+    private final Cache<String, AuditAsyncClientHolder<T>> tenantClientCache;
+    private final AuditAsyncShutdownHandler<T> shutdownHandler;
     private final ScheduledExecutorService maintenanceExecutor;
 
-    public AsyncClientHolderICacheImpl(AuditAsyncShutdownHandler shutdownHandler, AuditCacheRefresher refresher,
+    public AsyncClientHolderICacheImpl(AuditAsyncShutdownHandler<T> shutdownHandler, AuditCacheRefresher<T> refresher,
                                        long connectionLifeTime, int numOfConnections, long refreshPeriod){
         tenantClientCache = buildCache(shutdownHandler, connectionLifeTime, numOfConnections);
         maintenanceExecutor = new ScheduledThreadPoolExecutor(1);
@@ -32,7 +33,7 @@ public class AsyncClientHolderICacheImpl implements ICache<String, AuditAsyncCli
         startCacheRefresh(refresher, refreshPeriod);
     }
 
-    protected Cache<String, AuditAsyncClientHolder> buildCache(AuditAsyncShutdownHandler shutdownHandler,
+    protected Cache<String, AuditAsyncClientHolder<T>> buildCache(AuditAsyncShutdownHandler<T> shutdownHandler,
                                                                long connectionLifeTime, int numOfConnections)
     {
         return CacheBuilder.newBuilder()
@@ -42,19 +43,19 @@ public class AsyncClientHolderICacheImpl implements ICache<String, AuditAsyncCli
                 .build();
     }
 
-    protected void startCacheRefresh(AuditCacheRefresher refresher, long refreshPeriod) {
+    protected void startCacheRefresh(AuditCacheRefresher<T> refresher, long refreshPeriod) {
         maintenanceExecutor.scheduleAtFixedRate(() -> refresher.refresh(this, refreshPeriod),
                 refreshPeriod, refreshPeriod, TimeUnit.MILLISECONDS);
     }
 
     @Override
-    public Optional<AuditAsyncClientHolder> get(String tenantUuid) {
+    public Optional<AuditAsyncClientHolder<T>> get(String tenantUuid) {
         log.info("Trying to get async audit client for tenant %s", tenantUuid);
         return Optional.ofNullable(tenantClientCache.getIfPresent(tenantUuid));
     }
 
     @Override
-    public AuditAsyncClientHolder put(String tenantUuid, AuditAsyncClientHolder value) {
+    public AuditAsyncClientHolder<T> put(String tenantUuid, AuditAsyncClientHolder<T> value) {
         log.info("Inserting audit async client %s for tenant %s", value.getAuditZoneId(), tenantUuid);
         tenantClientCache.put(tenantUuid, value);
         return value;
@@ -67,7 +68,7 @@ public class AsyncClientHolderICacheImpl implements ICache<String, AuditAsyncCli
     }
 
     @Override
-    public Map<String, AuditAsyncClientHolder> getAll() {
+    public Map<String, AuditAsyncClientHolder<T>> getAll() {
         evict();
         return tenantClientCache.asMap();
     }

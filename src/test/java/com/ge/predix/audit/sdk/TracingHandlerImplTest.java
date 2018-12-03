@@ -1,16 +1,16 @@
 package com.ge.predix.audit.sdk;
 
+import static com.ge.predix.audit.sdk.AbstractAuditClientImpl.printAck;
+
+import org.junit.Before;
+import org.junit.Test;
+
 import com.ge.predix.audit.sdk.config.AuditConfiguration;
 import com.ge.predix.audit.sdk.exception.AuditException;
 import com.ge.predix.audit.sdk.message.tracing.Checkpoint;
 import com.ge.predix.audit.sdk.message.tracing.LifeCycleEnum;
 import com.ge.predix.eventhub.stub.Ack;
 import com.ge.predix.eventhub.stub.AckStatus;
-import org.junit.Before;
-import org.junit.Test;
-
-import static com.ge.predix.audit.sdk.AbstractAuditClientImpl.printAck;
-import static org.junit.Assert.*;
 
 /**
  * Created by 212582776 on 3/4/2018.
@@ -39,8 +39,8 @@ public class TracingHandlerImplTest {
     }
 
     @Test
-    public void testBuildMessage(){
-        Checkpoint checkpoint = tracingHandler.buildTracingMessage(tracingHandler.getAuditTracingEvent(), LifeCycleEnum.CHECK, printAck(
+    public void testBuildMessage() {
+        Checkpoint checkpoint = tracingHandler.buildTracingMessage(tracingHandler.auditTracingEvent.get(), LifeCycleEnum.CHECK, printAck(
                 Ack.newBuilder()
                         .setId("123")
                         .setStatusCode(AckStatus.ACCEPTED)

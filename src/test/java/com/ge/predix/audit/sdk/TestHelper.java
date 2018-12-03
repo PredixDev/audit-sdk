@@ -24,6 +24,7 @@ public class TestHelper<T extends AuditEvent> implements AuditCallback<T> {
     public AuditEvent lastFailureEvent;
     public List<AuditEvent> lastSuccessEventsBatch;
     String lastFailureDescription;
+    Throwable lastFailureExcepion;
     FailCode lastFailureCode;
     ClientErrorCode lastClientErrorCode;
     List<AuditEventFailReport<T>> failReports;
@@ -37,11 +38,12 @@ public class TestHelper<T extends AuditEvent> implements AuditCallback<T> {
     }
 
     @Override
-    public void onFailure(Result<T> result) {
+    public void onFailure(AuditAsyncResult<T> result) {
         this.failReports = result.getFailReports();
         AuditEventFailReport<T> report = failReports.iterator().next();
         lastFailureCode = report.getFailureReason();
         lastFailureDescription = report.getDescription();
+        lastFailureExcepion = report.getThrowable();
         lastFailureEvent = report.getAuditEvent();
         log.info("Failreport: "+ lastFailureCode +" desc: "+ lastFailureDescription +" "+ lastFailureEvent);
         failureCount.addAndGet(failReports.size());

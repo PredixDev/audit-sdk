@@ -18,7 +18,7 @@ public enum AuditClientState {
      */
     DISCONNECTED,
     /**
-     * The audit client was shutdown. It cannot be used any lionger.
+     * The audit client was shutdown. It cannot be used any longer.
      */
     SHUTDOWN
 

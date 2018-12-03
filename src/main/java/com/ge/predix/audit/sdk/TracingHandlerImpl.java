@@ -78,20 +78,22 @@ public class TracingHandlerImpl implements TracingHandler {
     @Override
     public Optional<AuditTracingEvent> sendInitialCheckpoint() {
         try {
-            getAuditTracingEvent().setMessageId(UUID.randomUUID().toString());
-            log.logWithPrefix(Level.INFO, logPrefix,  "Starting tracing flow");
-            Checkpoint checkpoint = buildTracingMessage(this.auditTracingEvent.get(), LifeCycleEnum.START,"onSend");
-            this.tracingMessageSender.sendTracingMessage(checkpoint);
-            log.logWithPrefix(Level.INFO, logPrefix, "calling Audit from tracing interval with event: %s" , auditTracingEvent.get());
+        	resetAuditTracingEvent();
+            log.logWithPrefix(Level.INFO, logPrefix, "Starting tracing flow");
+            Checkpoint checkpoint = buildTracingMessage(auditTracingEvent.get(), LifeCycleEnum.START, "onSend");
+            tracingMessageSender.sendTracingMessage(checkpoint);
+            log.logWithPrefix(Level.INFO, logPrefix, "calling Audit from tracing interval with event: %s", auditTracingEvent.get());
         } catch (Exception e) {
             log.info(new TracingException(e).toString());
         }
-        return Optional.of(getAuditTracingEvent());
-
+        
+        return Optional.of(auditTracingEvent.get());
     }
 
-    protected  AuditTracingEvent getAuditTracingEvent() {
-        return auditTracingEvent.get();
+    protected void resetAuditTracingEvent() {
+    	AuditTracingEvent event = auditTracingEvent.get();
+    	event.setMessageId(UUID.randomUUID().toString());
+    	event.setTimestamp(System.currentTimeMillis());
     }
 
     private void setAuditTracingEvent() {
@@ -139,7 +141,7 @@ public class TracingHandlerImpl implements TracingHandler {
         } catch (JsonProcessingException e) {
            value = tracingMetaData.toString();
         }
-        return   Checkpoint.builder()
+        return Checkpoint.builder()
                 .tenantId(this.configuration.getEhubZoneId())
                 .flowId(auditTracingEvent.getMessageId())
                 .state(lifeCycle)

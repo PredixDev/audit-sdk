@@ -36,7 +36,7 @@ public class RoutingTestHelper<T extends AuditEvent> implements RoutingAuditCall
     }
 
     @Override
-    public void onFailure(Result<T> result) {
+    public void onFailure(AuditAsyncResult<T> result) {
         AuditEventFailReport<T> failReport = result.getFailReports().iterator().next();
         FailCode failCode = failReport.getFailureReason();
         String description = failReport.getDescription();

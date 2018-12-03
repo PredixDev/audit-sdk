@@ -1,19 +1,18 @@
 package com.ge.predix.audit.sdk.routing.cache.impl;
 
-import com.ge.predix.audit.sdk.CommonClientInterface;
-import com.ge.predix.audit.sdk.config.RoutingAuditConfiguration;
-import com.ge.predix.audit.sdk.routing.cache.ICache;
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
-public class CommonClientInterfaceICacheImpl implements ICache<String, CommonClientInterface> {
 
-    private final Cache<String, CommonClientInterface> tenants;
+import com.ge.predix.audit.sdk.CommonClientInterface;
+import com.ge.predix.audit.sdk.message.AuditEvent;
+import com.ge.predix.audit.sdk.routing.cache.ICache;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+
+public class CommonClientInterfaceICacheImpl<T extends AuditEvent> implements ICache<String, CommonClientInterface<T>> {
+
+    private final Cache<String, CommonClientInterface<T>> tenants;
 
     public CommonClientInterfaceICacheImpl(long cacheRefreshPeriod, int cacheSize){
         tenants = CacheBuilder.newBuilder()
@@ -23,12 +22,12 @@ public class CommonClientInterfaceICacheImpl implements ICache<String, CommonCli
     }
 
     @Override
-    public Optional<CommonClientInterface> get(String tenantUuid) {
+    public Optional<CommonClientInterface<T>> get(String tenantUuid) {
         return Optional.ofNullable(tenants.getIfPresent(tenantUuid));
     }
 
     @Override
-    public CommonClientInterface put(String tenantUuid, CommonClientInterface value) {
+    public CommonClientInterface<T> put(String tenantUuid, CommonClientInterface<T> value) {
         tenants.put(tenantUuid, value);
         return value;
     }
@@ -39,7 +38,7 @@ public class CommonClientInterfaceICacheImpl implements ICache<String, CommonCli
     }
 
     @Override
-    public Map<String, CommonClientInterface> getAll() {
+    public Map<String, CommonClientInterface<T>> getAll() {
         evict();
         return tenants.asMap();
     }

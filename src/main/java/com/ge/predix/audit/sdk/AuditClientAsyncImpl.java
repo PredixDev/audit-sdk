@@ -1,5 +1,18 @@
 package com.ge.predix.audit.sdk;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.stream.Collectors;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.ge.predix.audit.sdk.config.AuditConfiguration;
 import com.ge.predix.audit.sdk.exception.AuditException;
@@ -19,16 +32,9 @@ import com.ge.predix.eventhub.stub.AckStatus;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Queues;
+
 import lombok.Getter;
 import lombok.Setter;
-
-import java.util.*;
-import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.stream.Collectors;
 
 
 /**
@@ -51,9 +57,9 @@ public class AuditClientAsyncImpl<T extends AuditEvent> extends AbstractAuditCli
 	@Getter
 	private Map<String, EventContainer<T>> eventMap;
 
-
 	@Getter
 	private LinkedBlockingQueue<QueueElement> eventQueue;
+	
 	@Getter
 	private ScheduledExecutorService retryExecutorService;
 
@@ -88,33 +94,39 @@ public class AuditClientAsyncImpl<T extends AuditEvent> extends AbstractAuditCli
 	 * Audit asynchronously a single event.
 	 *
 	 * @param event - the event to be logged.
+	 * @throws AuditException 
 	 */
 	@Override
-	public AuditingResult<T> audit(T event) {
+	public AuditingResult<T> audit(T event) throws AuditException {
 		if (event != null) {
 			audit(Collections.singletonList(event));
 		}
-		return new AuditingResult<>(Collections.emptyList(), Collections.emptyList());
+		return AuditingResult.emptyResults();
 	}
 
 	/**
 	 * Audit asynchronously multiple events.
 	 *
 	 * @param events the events to be logged.
+	 * @throws AuditException 
 	 */
 	@Override
-	public synchronized AuditingResult<T> audit(List<T> events) {
-		throwIfShutdown();
-		if (events != null) {
-			log.logWithPrefix(Level.INFO, logPrefix, "starting audit %d messages", events.size());
-			StreamUtils.partitionOf(events, this.bulkSize).forEach(
-					auditEvents -> {
-						List<T> validEvents = validateEvents(auditEvents);
-						addEventsToCache(validEvents);
-						addToEventhubCacheAndFlush(validEvents);
-					});
+	public synchronized AuditingResult<T> audit(List<T> events) throws AuditException {
+		try {
+			throwIfShutdown();
+			if (events != null) {
+				log.logWithPrefix(Level.INFO, logPrefix, "starting audit %d messages", events.size());
+				StreamUtils.partitionOf(events, this.bulkSize).forEach(
+						auditEvents -> {
+							List<T> validEvents = validateEvents(auditEvents);
+							addEventsToCache(validEvents);
+							addToEventhubCacheAndFlush(validEvents);
+						});
+			}
+			return AuditingResult.emptyResults();
+		} catch (Exception e) {
+			throw new AuditException("An error occurred while auditing", e);
 		}
-		return AuditingResult.emptyResults();
 	}
 
 	/******************************************** PRIVATE ***********************************/
@@ -138,7 +150,7 @@ public class AuditClientAsyncImpl<T extends AuditEvent> extends AbstractAuditCli
 		});
 
 		if(!failReports.isEmpty()) {
-			callback.onFailure(Result.<T>builder().failReports(failReports).build());
+			callback.onFailure(AuditAsyncResult.<T>builder().failReports(failReports).build());
 		}
 		return validEvents;
 	}
@@ -153,10 +165,10 @@ public class AuditClientAsyncImpl<T extends AuditEvent> extends AbstractAuditCli
 				client.addMessage(event.getMessageId(), body, null);
 			} catch (JsonProcessingException e) {
 				log.logWithPrefix(Level.INFO, e, logPrefix, "failed to parse event.");
-				updateEventFailureDetails(event.getMessageId(), FailCode.JSON_ERROR, ExceptionUtils.toString(e));
+				updateEventFailureDetails(event.getMessageId(), FailCode.JSON_ERROR, "failed to parse event", e);
 			} catch (EventHubClientException e) {
-				log.logWithPrefix(Level.INFO, e, logPrefix, "failed to add event t eventhub cache");
-				updateEventFailureDetails(event.getMessageId(), FailCode.ADD_MESSAGE_ERROR, ExceptionUtils.toString(e));
+				log.logWithPrefix(Level.INFO, e, logPrefix, "failed to add the event to eventhub cache");
+				updateEventFailureDetails(event.getMessageId(), FailCode.ADD_MESSAGE_ERROR, "failed to add the event to eventhub cache", e);
 			}
 		});
 	}
@@ -165,10 +177,9 @@ public class AuditClientAsyncImpl<T extends AuditEvent> extends AbstractAuditCli
 		try {
 			reconnect();
 		} catch (EventHubClientException e) {
-			String err =  ExceptionUtils.toString(e);
+			log.logWithPrefix(Level.WARNING, e, logPrefix, "reconnect failed in reconnectStrategy");
 			setStateAndNotify(AuditCommonClientState.DISCONNECTED);
-			callback.onClientError(ClientErrorCode.RECONNECT_FAILURE, err);
-			log.logWithPrefix(Level.WARNING, e, logPrefix,"reconnect failed in reconnectStrategy");
+			callback.onClientError(ClientErrorCode.RECONNECT_FAILURE, ExceptionUtils.toString(e));
 		}
 	}
 
@@ -195,23 +206,26 @@ public class AuditClientAsyncImpl<T extends AuditEvent> extends AbstractAuditCli
 		return eventContainer;
 	}
 
-	AuditEventFailReport<T> removeLatestElementFromCache(){
-		log.logWithPrefix(Level.INFO, logPrefix,"queue size reached to limit of %d elements. removing the oldest event", queueSize);
+	Optional<AuditEventFailReport<T>> removeLatestElementFromCache(){
+		log.logWithPrefix(Level.INFO, logPrefix, "queue size reached to limit of %d elements. removing the oldest event", queueSize);
 		QueueElement polledElement = eventQueue.poll();
 		if(polledElement == null){
-			return null;
+			return Optional.empty();
 		}
+		
 		String messageId = polledElement.getMessageId();
 		EventContainer<T> eventContainer = eventMap.remove(messageId);
-		AuditEventFailReport<T> auditEventFailReport = eventContainer.getAuditEventFailReport();
-		if(auditEventFailReport == null){
-			auditEventFailReport = AuditEventFailReport.<T>builder()
-					.auditEvent(eventContainer.getAuditEvent())
-					.build();
+		if(eventContainer == null){
+			return Optional.empty();
 		}
-		auditEventFailReport.setFailureReason(FailCode.CACHE_IS_FULL);
-		auditEventFailReport.setDescription(generateLogs(logPrefix, AUDIT_CACHE_IS_FULL));
-		return auditEventFailReport;
+		
+		AuditEventFailReport<T> auditEventFailReport = AuditEventFailReport.<T>builder()
+					.auditEvent(eventContainer.getAuditEvent())
+					.failureReason(FailCode.CACHE_IS_FULL)
+					.description(generateLogs(logPrefix, AUDIT_CACHE_IS_FULL))
+					.build();
+		
+		return Optional.of(auditEventFailReport);
 	}
 
 	void addEventsToCache(Collection<T> events) {
@@ -222,13 +236,13 @@ public class AuditClientAsyncImpl<T extends AuditEvent> extends AbstractAuditCli
 			addEventToCache(event).ifPresent(failReports::add);
 		});
 		if(!failReports.isEmpty()) {
-			callback.onFailure(Result.<T>builder().failReports(failReports).build());
+			callback.onFailure(AuditAsyncResult.<T>builder().failReports(failReports).build());
 		}
 	}
 
 	private Optional<AuditEventFailReport<T>> removeEventsWhenLimitReached() {
 		if (eventQueue.size() >= queueSize){
-			return Optional.of(removeLatestElementFromCache());
+			return removeLatestElementFromCache();
 		}
 		return Optional.empty();
 	}
@@ -240,7 +254,7 @@ public class AuditClientAsyncImpl<T extends AuditEvent> extends AbstractAuditCli
 			return Optional.of(AuditEventFailReport.<T>builder()
 					.auditEvent(event)
 					.failureReason(FailCode.DUPLICATE_EVENT)
-					.description(String.format("Event with id %s was already added to the cache in the past",messageId))
+					.description(String.format("Event with id %s was already added to the cache in the past", messageId))
 					.build());
 		}
 
@@ -299,34 +313,34 @@ public class AuditClientAsyncImpl<T extends AuditEvent> extends AbstractAuditCli
 
 	Optional<T> handleAck(Ack ack) {
 		String eventId = ack.getId();
-		if(!tracingHandler.isTracingAck(ack)){
+		if(!tracingHandler.isTracingAck(ack)) {
 			if (eventMap.containsKey(eventId)) {
-				if (ack.getStatusCode() == AckStatus.ACCEPTED){
+				if (ack.getStatusCode() == AckStatus.ACCEPTED) {
 					return removeAndGetAuditEvent(eventId);
-				} else{
+				} else {
 					log.logWithPrefix(Level.INFO, logPrefix, "got NACK for event id %s. NACK: %s", eventId, printAck(ack));
-					updateEventFailureDetails(eventId, FailCode.BAD_ACK, printAck(ack));
+					updateEventFailureDetails(eventId, FailCode.BAD_ACK, printAck(ack), null);
 				}
-			} else{ //eventId is not in the cache
+			} else { // eventId is not in the cache
 				log.logWithPrefix(Level.INFO, logPrefix, "event with id %s was not found in cache", eventId);
 			}
 		} else { // if is tracing
 			tracingHandler.sendCheckpoint(ack);
-			log.logWithPrefix(Level.INFO, logPrefix, "event: %s is tracing. removing from cache event",eventId);
+			log.logWithPrefix(Level.INFO, logPrefix, "event: %s is tracing. removing from cache event", eventId);
 			removeElementFromCache(eventId);
 		}
 		return Optional.empty();
 	}
 
-	private void updateEventFailureDetails(String eventId, FailCode status, String description) {
+	private void updateEventFailureDetails(String eventId, FailCode status, String description, Throwable e) {
 		eventMap.computeIfPresent(eventId,((s, eventContainer) -> {
-            eventContainer.setFailReport(status, description);
-            return eventContainer;}));
+			eventContainer.setFailReport(status, description, e);
+			return eventContainer;}));
 	}
 
 	private Optional<T> removeAndGetAuditEvent(String eventId) {
 		EventContainer<T> eventContainer = removeElementFromCache(eventId);
-		T auditEvent = eventContainer == null? null : eventContainer.getAuditEvent();
+		T auditEvent = eventContainer == null ? null : eventContainer.getAuditEvent();
 		if (auditEvent == null){
 			log.logWithPrefix(Level.INFO, logPrefix,"event %s was already ACKed", eventId);
 		}
@@ -382,15 +396,14 @@ public class AuditClientAsyncImpl<T extends AuditEvent> extends AbstractAuditCli
 						log.logWithPrefix(Level.INFO, logPrefix,"audit event id: %s was removed from cache with" +
 								" error %s: %s",auditEvent.getMessageId(), auditEventFailReport.getFailureReason(),
 								auditEventFailReport.getDescription());
-					}
-					else{
+					} else {
 						tracingHandler.sendCheckpoint(auditEvent, LifeCycleEnum.FAIL ,generateLogs(logPrefix, "No more retries"));
 					}
 				});
 		log.logWithPrefix(Level.INFO, logPrefix,"end scanning the map for events{%d} with no ack: endTime {%d}",
 				eventMap.size(), System.currentTimeMillis() - start);
 		if(!failReports.isEmpty()) {
-			callback.onFailure(Result.<T>builder().failReports(failReports).build());
+			callback.onFailure(AuditAsyncResult.<T>builder().failReports(failReports).build());
 		}
 	}
 
@@ -407,7 +420,11 @@ public class AuditClientAsyncImpl<T extends AuditEvent> extends AbstractAuditCli
 	@Override
 	protected void sendTracingMessage(){
 		tracingHandler.sendInitialCheckpoint().ifPresent(auditTracingEvent -> {
-			audit((T)auditTracingEvent);
+			try {
+				audit((T)auditTracingEvent);
+			} catch (AuditException e) {
+				log.logWithPrefix(Level.INFO, logPrefix, "failed to audit tracing message: " + ExceptionUtils.toString(e));
+			}
 		});
 	}
 
@@ -422,19 +439,19 @@ public class AuditClientAsyncImpl<T extends AuditEvent> extends AbstractAuditCli
 				.forEach(e ->
 						failReports.add(AuditEventFailReport.<T>builder()
 						.auditEvent(e)
-						.failureReason(FailCode.NO_MORE_RETRY)
+						.failureReason(FailCode.NO_ACK)
 						.description(generateLogs(logPrefix,
 								generateLogs(logPrefix, "Client is in shutdown state and cannot handle events")))
 						.build()));
 
 		if(!failReports.isEmpty()) {
-			callback.onFailure(Result.<T>builder().failReports(failReports).build());
+			callback.onFailure(AuditAsyncResult.<T>builder().failReports(failReports).build());
 		}
 		super.shutdown();
 	}
 
 	public void gracefulShutdown() {
-		for (int i = 0; i < retryCount ; i++) {
+		for (int i = 0; i < retryCount + 2; i++) {
 			if (eventMap.isEmpty()) {
 				break;
 			}

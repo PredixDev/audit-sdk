@@ -46,7 +46,7 @@ public class AuditClientSync<T extends AuditEvent> {
      * @throws AuditException - if an unexpected error occurred with auditing.
      *         IllegalStateException - if the client was shutdown
      */
-    public AuditingResult audit(T event) throws AuditException{
+    public AuditingResult<T> audit(T event) throws AuditException {
         return auditClientSyncImpl.audit(event);
     }
 
@@ -57,7 +57,7 @@ public class AuditClientSync<T extends AuditEvent> {
      * @throws AuditException - if an unexpected error occurred with auditing.
      *         IllegalStateException - if the client was shutdown
      */
-    public AuditingResult audit(List<T> events) throws AuditException {
+    public AuditingResult<T> audit(List<T> events) throws AuditException {
     	return auditClientSyncImpl.audit(events);
     }
 
@@ -78,8 +78,7 @@ public class AuditClientSync<T extends AuditEvent> {
     public void trace() throws EventHubClientException {
         if(auditConfiguration.isTraceEnabled()) {
     	    auditClientSyncImpl.trace();
-        }
-        else{
+        } else {
             throw new IllegalStateException("Trace is not enabled in configuration.");
         }
     }
@@ -99,7 +98,7 @@ public class AuditClientSync<T extends AuditEvent> {
      *
      * @return state of Audit Client
      */
-    public AuditClientState getState(){
+    public AuditClientState getState() {
         return auditClientSyncImpl.getAuditClientState();
     }
 

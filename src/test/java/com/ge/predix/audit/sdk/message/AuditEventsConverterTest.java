@@ -35,6 +35,8 @@ public class AuditEventsConverterTest {
                 .payload(SAMPLE_PAYLOAD)
                 .tenantUuid(FAKE)
                 .correlationId(FAKE)
+                .ownerTenant(FAKE)
+                .operatorTenant(FAKE)
                 .build();
 
         AuditEvent extended = auditEventsConverter.extend(eventV2);

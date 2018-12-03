@@ -1,12 +1,9 @@
 package com.ge.predix.audit.sdk.message.tracing;
 
-import lombok.AllArgsConstructor;
+import java.io.Serializable;
+
 import lombok.Builder;
 import lombok.Data;
-import lombok.Getter;
-
-import java.beans.ConstructorProperties;
-import java.io.Serializable;
 
 /**
  * Created by Martin Saad on 4/27/2017.

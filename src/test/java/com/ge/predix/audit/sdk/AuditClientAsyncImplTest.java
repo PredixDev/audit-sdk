@@ -10,6 +10,7 @@ import com.ge.predix.audit.sdk.message.AuditEventV2;
 import com.ge.predix.audit.sdk.message.AuditTracingEvent;
 import com.ge.predix.audit.sdk.message.tracing.TracingMessageSender;
 import com.ge.predix.audit.sdk.message.tracing.TracingMessageSenderImpl;
+import com.ge.predix.audit.sdk.util.ExceptionUtils;
 import com.ge.predix.audit.sdk.util.ReflectionUtils;
 import com.ge.predix.eventhub.EventHubClientException;
 import com.ge.predix.eventhub.client.Client;
@@ -22,6 +23,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Queues;
 import org.joda.time.DateTime;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Spy;
 
@@ -174,9 +176,9 @@ public class AuditClientAsyncImplTest {
         auditClientAsyncImpl.getEventMap().put(id_2, eventContainer_2);
         auditClientAsyncImpl.getEventQueue().offer(queueElement_2);
 
-        AuditEventFailReport auditEventFailReport = auditClientAsyncImpl.removeLatestElementFromCache();
-        assertThat(auditEventFailReport.getFailureReason(), is(FailCode.CACHE_IS_FULL));
-        assertThat(auditEventFailReport.getAuditEvent(), is(auditEvent_1));
+        Optional<AuditEventFailReport<AuditEventV2>> auditEventFailReport = auditClientAsyncImpl.removeLatestElementFromCache();
+        assertThat(auditEventFailReport.get().getFailureReason(), is(FailCode.CACHE_IS_FULL));
+        assertThat(auditEventFailReport.get().getAuditEvent(), is(auditEvent_1));
     }
 
     @Test
@@ -369,7 +371,8 @@ public class AuditClientAsyncImplTest {
         assertThat(auditClientAsyncImpl.getEventMap().size(), is(0));
         assertThat(cb.getFailureCount(), is(1));
         assertThat(cb.lastFailureCode, is(FailCode.ADD_MESSAGE_ERROR));
-        assertThat(cb.lastFailureDescription, containsString("add error"));
+        assertThat(cb.lastFailureDescription, containsString("failed to add the event to eventhub cache"));
+        assertThat(ExceptionUtils.toString(cb.lastFailureExcepion), containsString("add error"));
     }
 
 
@@ -902,7 +905,7 @@ public class AuditClientAsyncImplTest {
 
         assertEquals(AuditClientState.SHUTDOWN, auditClientAsyncImpl.getAuditClientState());
         assertTrue(auditClientAsyncImpl.getRetryExecutorService().isShutdown());
-        assertThat(cb.lastFailureCode, is(FailCode.NO_MORE_RETRY));
+        assertThat(cb.lastFailureCode, is(FailCode.NO_ACK));
         assertThat(cb.lastFailureEvent, is(auditEvent_1));
     }
 
@@ -933,11 +936,11 @@ public class AuditClientAsyncImplTest {
         long end = System.currentTimeMillis();
 
         long diff = end-start;
-        assertTrue(diff >= auditClientAsyncImpl.noAckLimit * (auditClientAsyncImpl.retryCount ) );
-        assertTrue(diff < auditClientAsyncImpl.noAckLimit * (auditClientAsyncImpl.retryCount + 1) );
+        assertTrue(diff >= auditClientAsyncImpl.noAckLimit * (auditClientAsyncImpl.retryCount));
+        assertTrue(diff < auditClientAsyncImpl.noAckLimit * (auditClientAsyncImpl.retryCount + 3));
         assertEquals(AuditClientState.SHUTDOWN, auditClientAsyncImpl.getAuditClientState());
         assertTrue(auditClientAsyncImpl.getRetryExecutorService().isShutdown());
-        assertThat(cb.lastFailureCode, is(FailCode.NO_MORE_RETRY));
+        assertThat(cb.lastFailureCode, is(FailCode.NO_ACK));
         assertThat(cb.lastFailureEvent, is(auditEvent_1));
     }
 

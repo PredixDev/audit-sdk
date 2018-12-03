@@ -25,7 +25,6 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Queues;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.impl.client.HttpClients;
 
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
@@ -128,11 +127,11 @@ public class RoutingAuditClient<T extends AuditEvent> {
                 getRemainingEvents().forEach(e ->
                         failReports.add(AuditEventFailReport.<T>builder()
                                 .auditEvent(e)
-                                .failureReason(FailCode.NO_MORE_RETRY)
+                                .failureReason(FailCode.NO_ACK)
                                 .description("Audit client is shut down!" )
                                 .build()));
                 if(!failReports.isEmpty()) {
-                    callback.onFailure(Result.<T>builder().failReports(failReports).build());
+                    callback.onFailure(AuditAsyncResult.<T>builder().failReports(failReports).build());
                 }
                 executor.shutdownNow();
                 this.routingAuditPublisher.shutdown();
@@ -189,23 +188,23 @@ public class RoutingAuditClient<T extends AuditEvent> {
             RoutingResourceConfig routingResourceConfig = configuration.getRoutingResourceConfig();
             AuditEventsConverter converter = new AuditEventsConverter(new AppNameClient(tokenClient, appNameConfig.getAppNamePrefix()));
             //shutdown client
-            AuditAsyncShutdownHandler shutdownClient = new AuditAsyncShutdownHandler(configuration.getTenantAuditConfig(), tokenServiceClient,
+            AuditAsyncShutdownHandler<T> shutdownClient = new AuditAsyncShutdownHandler<>(configuration.getTenantAuditConfig(), tokenServiceClient,
                     Executors.newFixedThreadPool(routingResourceConfig.getNumOfConnections()));
 
             //Dedicated tenants cache
-           ICache<String, AuditAsyncClientHolder> dedicatedClients = new AsyncClientHolderICacheImpl(shutdownClient,
-                   new AuditCacheRefresher(tmsClient, tokenServiceClient),
+           ICache<String, AuditAsyncClientHolder<T>> dedicatedClients = new AsyncClientHolderICacheImpl<>(shutdownClient,
+                   new AuditCacheRefresher<>(tmsClient, tokenServiceClient),
                    routingResourceConfig.getConnectionLifetime(),
                    routingResourceConfig.getNumOfConnections(),
                    routingResourceConfig.getCacheRefreshPeriod());
 
-           ICache<String, CommonClientInterface> sharedTenants = new CommonClientInterfaceICacheImpl(routingResourceConfig.getCacheRefreshPeriod(),
+           ICache<String, CommonClientInterface<T>> sharedTenants = new CommonClientInterfaceICacheImpl<>(routingResourceConfig.getCacheRefreshPeriod(),
                    routingResourceConfig.getSharedTenantCacheSize());
 
             //Client factory
            AuditAsyncClientFactory<T> clientFactory = new AuditAsyncClientFactory<>(cb, configuration, tmsClient, tokenServiceClient, sharedTenants, dedicatedClients);
 
-           TenantCacheProxy cache = new TenantCacheProxy(dedicatedClients,
+           TenantCacheProxy<T> cache = new TenantCacheProxy<>(dedicatedClients,
                     sharedTenants,
                     tokenServiceClient,
                     clientFactory,

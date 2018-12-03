@@ -3,11 +3,10 @@ package com.ge.predix.audit.sdk.routing;
 import com.ge.predix.audit.sdk.AuditEventFailReport;
 import com.ge.predix.audit.sdk.CommonClientInterface;
 import com.ge.predix.audit.sdk.FailCode;
-import com.ge.predix.audit.sdk.Result;
+import com.ge.predix.audit.sdk.AuditAsyncResult;
 import com.ge.predix.audit.sdk.message.AuditEvent;
 import com.ge.predix.audit.sdk.message.AuditEventsConverter;
 import com.ge.predix.audit.sdk.routing.cache.TenantCacheProxy;
-import com.ge.predix.audit.sdk.util.ExceptionUtils;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 
@@ -20,7 +19,7 @@ import java.util.stream.Collectors;
 public class RoutingAuditPublisher<T extends AuditEvent> {
 
     private final RoutingAuditCallback<T> callback;
-    private final TenantCacheProxy tenantCacheProxy;
+    private final TenantCacheProxy<T> tenantCacheProxy;
     private final AuditEventsConverter converter;
 
     public void auditToTenant(String tenantUuid, List<T> events) {
@@ -47,7 +46,7 @@ public class RoutingAuditPublisher<T extends AuditEvent> {
                             .throwable(e)
                             .build()));
             if(!failReports.isEmpty()) {
-                callback.onFailure(Result.<T>builder().failReports(failReports).build());
+                callback.onFailure(AuditAsyncResult.<T>builder().failReports(failReports).build());
             }
         }
     }
@@ -59,5 +58,4 @@ public class RoutingAuditPublisher<T extends AuditEvent> {
     public void gracefulShutdown() throws Exception {
         tenantCacheProxy.gracefulShutdown();
     }
-
 }

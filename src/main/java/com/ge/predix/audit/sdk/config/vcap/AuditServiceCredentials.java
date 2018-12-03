@@ -1,5 +1,6 @@
 package com.ge.predix.audit.sdk.config.vcap;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 /**
  * Created by 212584872 on 1/8/2017.
  */
@@ -15,6 +16,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class AuditServiceCredentials {
     @SerializedName("audit-pub-client-scope")
     @JsonProperty("audit-pub-client-scope")
