@@ -10,8 +10,9 @@ import com.ge.predix.audit.sdk.message.AuditTracingEvent;
 import com.ge.predix.audit.sdk.message.tracing.*;
 import com.ge.predix.audit.sdk.util.CustomLogger;
 import com.ge.predix.audit.sdk.util.LoggerUtils;
-import com.ge.predix.eventhub.stub.Ack;
-import com.ge.predix.eventhub.stub.AckStatus;
+import com.ge.predix.eventhub.Ack;
+import com.ge.predix.eventhub.AckStatus;
+
 
 import java.net.URISyntaxException;
 import java.util.Optional;

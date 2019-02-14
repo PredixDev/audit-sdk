@@ -2,6 +2,8 @@ package com.ge.predix.audit.sdk;
 
 import static com.ge.predix.audit.sdk.AbstractAuditClientImpl.printAck;
 
+import com.ge.predix.eventhub.Ack;
+import com.ge.predix.eventhub.AckStatus;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -9,8 +11,7 @@ import com.ge.predix.audit.sdk.config.AuditConfiguration;
 import com.ge.predix.audit.sdk.exception.AuditException;
 import com.ge.predix.audit.sdk.message.tracing.Checkpoint;
 import com.ge.predix.audit.sdk.message.tracing.LifeCycleEnum;
-import com.ge.predix.eventhub.stub.Ack;
-import com.ge.predix.eventhub.stub.AckStatus;
+
 
 /**
  * Created by 212582776 on 3/4/2018.

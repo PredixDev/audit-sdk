@@ -1,9 +1,9 @@
 package com.ge.predix.audit.examples.service;
 
+import com.ge.predix.audit.sdk.AuditAsyncResult;
 import com.ge.predix.audit.sdk.AuditCallback;
 import com.ge.predix.audit.sdk.AuditClient;
 import com.ge.predix.audit.sdk.ClientErrorCode;
-import com.ge.predix.audit.sdk.Result;
 import com.ge.predix.audit.sdk.config.AuditConfiguration;
 import com.ge.predix.audit.sdk.config.vcap.VcapLoaderServiceImpl;
 import com.ge.predix.audit.sdk.exception.AuditException;
@@ -58,7 +58,7 @@ public class PublisherServiceImpl implements PublisherService {
     private AuditCallback<AuditEventV2> buildAuditCallback() {
         return new AuditCallback<AuditEventV2>() {
             @Override
-            public void onFailure(Result<AuditEventV2> result) {
+            public void onFailure(AuditAsyncResult<AuditEventV2> result) {
                 responseFromCallback = result.toString();
             }
 

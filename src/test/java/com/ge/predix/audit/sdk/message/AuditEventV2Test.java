@@ -29,6 +29,7 @@ public class AuditEventV2Test {
     @Test
     public void auditMessagesDiffTest() throws InterruptedException {
         AuditEventV2 message1 = AuditEventV2.builder()
+                        .messageId(TENANT)
                         .categoryType(AuditEnums.CategoryType.ADMINISTRATIONS)
                         .publisherType(AuditEnums.PublisherType.APP_SERVICE)
                         .eventType(AuditEnums.EventType.ACTION)
@@ -46,6 +47,7 @@ public class AuditEventV2Test {
 
         log.info("message2: "+message2.toString());
 
+        assertEquals(TENANT, message1.getMessageId());
         assertThat(message1.getTimestamp() ==
                 message2.getTimestamp(), is(false));
         assertThat(message1.getMessageId() ==

@@ -76,11 +76,12 @@ public class AuditEventV2 implements AuditEvent {
     private String operatorTenant;
 
     @Builder(builderClassName = "AuditEventV2Builder")
-    @ConstructorProperties({"timestamp", "classifier", "publisherType", "categoryType", "eventType", "payload", "correlationId", "tenantUuid", "ownerTenant", "operatorTenant"})
-    AuditEventV2(long timestamp, @NotNull AuditEnums.Classifier classifier, @NotNull AuditEnums.PublisherType publisherType, @NotNull AuditEnums.CategoryType categoryType, @NotNull AuditEnums.EventType eventType, String payload, String correlationId, String tenantUuid, String ownerTenant, String operatorTenant) throws AuditValidationException {
-        this(timestamp, classifier, publisherType, categoryType, eventType, payload, correlationId, tenantUuid, ownerTenant, operatorTenant, null, null);
+    @ConstructorProperties({ "messageId", "timestamp", "classifier", "publisherType", "categoryType", "eventType", "payload", "correlationId", "tenantUuid", "ownerTenant", "operatorTenant"})
+    AuditEventV2(@NotNull String messageId, long timestamp, @NotNull AuditEnums.Classifier classifier, @NotNull AuditEnums.PublisherType publisherType, @NotNull AuditEnums.CategoryType categoryType, @NotNull AuditEnums.EventType eventType, String payload, String correlationId, String tenantUuid, String ownerTenant, String operatorTenant) throws AuditValidationException {
+        this(timestamp, classifier, publisherType, categoryType, eventType, payload, correlationId, tenantUuid, ownerTenant, operatorTenant, messageId, null);
     }
-    
+
+    //We are keeping this ctor to avoid appName injection.
     protected AuditEventV2(long timestamp, AuditEnums.Classifier classifier, AuditEnums.PublisherType publisherType, AuditEnums.CategoryType categoryType,
     		AuditEnums.EventType eventType, String payload, String correlationId, String tenantUuid, String ownerTenant, String operatorTenant, String messageId, String appName) {
     	this.timestamp = timestamp;
@@ -116,7 +117,7 @@ public class AuditEventV2 implements AuditEvent {
         private String operatorTenant;
 
         public AuditEventV2 build() throws AuditValidationException {
-            messageId = UUID.randomUUID().toString();
+            messageId = (messageId == null)? UUID.randomUUID().toString() : messageId;
             timestamp = (timestamp <= 0) ? timestamp = System.currentTimeMillis() : timestamp;
             classifier = (classifier == null) ? AuditEnums.Classifier.SUCCESS : classifier;
             

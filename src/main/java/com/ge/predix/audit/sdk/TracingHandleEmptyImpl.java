@@ -3,7 +3,7 @@ package com.ge.predix.audit.sdk;
 import com.ge.predix.audit.sdk.message.AuditEvent;
 import com.ge.predix.audit.sdk.message.AuditTracingEvent;
 import com.ge.predix.audit.sdk.message.tracing.LifeCycleEnum;
-import com.ge.predix.eventhub.stub.Ack;
+import com.ge.predix.eventhub.Ack;
 
 
 import java.util.Optional;

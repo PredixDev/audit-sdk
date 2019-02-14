@@ -11,10 +11,11 @@ import com.ge.predix.audit.sdk.util.LoggerUtils;
 import com.ge.predix.audit.sdk.util.StreamUtils;
 import com.ge.predix.audit.sdk.validator.ValidatorReport;
 import com.ge.predix.audit.sdk.validator.ValidatorServiceImpl;
+import com.ge.predix.eventhub.Ack;
+import com.ge.predix.eventhub.AckStatus;
 import com.ge.predix.eventhub.EventHubClientException;
 import com.ge.predix.eventhub.configuration.PublishConfiguration;
-import com.ge.predix.eventhub.stub.Ack;
-import com.ge.predix.eventhub.stub.AckStatus;
+
 import com.google.common.collect.Sets;
 
 import java.util.*;

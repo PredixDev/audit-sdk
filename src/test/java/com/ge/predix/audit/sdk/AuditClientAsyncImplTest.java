@@ -12,13 +12,14 @@ import com.ge.predix.audit.sdk.message.tracing.TracingMessageSender;
 import com.ge.predix.audit.sdk.message.tracing.TracingMessageSenderImpl;
 import com.ge.predix.audit.sdk.util.ExceptionUtils;
 import com.ge.predix.audit.sdk.util.ReflectionUtils;
+import com.ge.predix.eventhub.Ack;
+import com.ge.predix.eventhub.AckStatus;
 import com.ge.predix.eventhub.EventHubClientException;
+import com.ge.predix.eventhub.Timestamp;
 import com.ge.predix.eventhub.client.Client;
 import com.ge.predix.eventhub.configuration.EventHubConfiguration;
 import com.ge.predix.eventhub.configuration.PublishConfiguration;
-import com.ge.predix.eventhub.stub.Ack;
-import com.ge.predix.eventhub.stub.AckStatus;
-import com.ge.predix.eventhub.stub.Timestamp;
+
 import com.google.common.collect.Lists;
 import com.google.common.collect.Queues;
 import org.joda.time.DateTime;

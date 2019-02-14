@@ -13,7 +13,6 @@ public interface AuditEvent extends Serializable, Cloneable {
     String getTenantUuid();
 
     /**
-     * @Throws @AuditValidationException
      * @return cloned Object
      */
     AuditEvent clone();

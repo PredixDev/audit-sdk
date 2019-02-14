@@ -19,8 +19,9 @@ import java.util.*;
 import com.ge.predix.audit.sdk.message.AuditEnums;
 import com.ge.predix.audit.sdk.message.AuditEventV2;
 import com.ge.predix.audit.sdk.util.ReflectionUtils;
-import com.ge.predix.eventhub.stub.Ack;
-import com.ge.predix.eventhub.stub.AckStatus;
+
+import com.ge.predix.eventhub.Ack;
+import com.ge.predix.eventhub.AckStatus;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;

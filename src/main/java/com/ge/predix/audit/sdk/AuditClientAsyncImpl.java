@@ -24,11 +24,12 @@ import com.ge.predix.audit.sdk.util.LoggerUtils;
 import com.ge.predix.audit.sdk.util.StreamUtils;
 import com.ge.predix.audit.sdk.validator.ValidatorReport;
 import com.ge.predix.audit.sdk.validator.ValidatorServiceImpl;
+import com.ge.predix.eventhub.Ack;
+import com.ge.predix.eventhub.AckStatus;
 import com.ge.predix.eventhub.EventHubClientException;
 import com.ge.predix.eventhub.client.Client;
 import com.ge.predix.eventhub.configuration.PublishConfiguration;
-import com.ge.predix.eventhub.stub.Ack;
-import com.ge.predix.eventhub.stub.AckStatus;
+
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Queues;
@@ -92,9 +93,8 @@ public class AuditClientAsyncImpl<T extends AuditEvent> extends AbstractAuditCli
 
 	/**
 	 * Audit asynchronously a single event.
-	 *
 	 * @param event - the event to be logged.
-	 * @throws AuditException 
+	 * @throws AuditException when there was an internal error that could not be handled by the client or illegal states like client was shutdown.
 	 */
 	@Override
 	public AuditingResult<T> audit(T event) throws AuditException {
@@ -108,7 +108,7 @@ public class AuditClientAsyncImpl<T extends AuditEvent> extends AbstractAuditCli
 	 * Audit asynchronously multiple events.
 	 *
 	 * @param events the events to be logged.
-	 * @throws AuditException 
+	 * @throws AuditException when there was an internal error that could not be handled by the client or illegal states like client was shutdown.
 	 */
 	@Override
 	public synchronized AuditingResult<T> audit(List<T> events) throws AuditException {

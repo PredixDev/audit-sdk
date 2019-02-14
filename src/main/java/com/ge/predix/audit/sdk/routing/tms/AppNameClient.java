@@ -13,7 +13,7 @@ import static com.ge.predix.audit.sdk.util.ExceptionUtils.swallowSupplierExcepti
 
 /**
  * This class extract appName suffix from a given {@link Token}
- * i.e if you want to extract STUF feature name from a Token with "stuf.app.<feature>" scopes
+ * i.e if you want to extract STUF feature name from a Token with stuf.app.origin
  */
 @AllArgsConstructor
 public class AppNameClient {
@@ -28,10 +28,10 @@ public class AppNameClient {
      * This method will fetch "application token" from trusted issuer using {@link TokenClient} and extract
      *      the feature name from the scopes.
      *  There could be only 1 scope with the given suffix
-     *  usually the suffix will be the feature, and the prefix will be stuf.app.<>
+     *  usually the suffix will be the feature, and the prefix will be stuf.app.origin
      * @return appName which is feature name
      * @throws TokenException when the token cannot be fetched from the TokenClient
-     *      or application or there are more than 1 scope with different appName in the Token
+     *      or application or there is more than 1 scope with different appName in the Token
      */
     public String getAppName() {
         Token token = getToken(false);

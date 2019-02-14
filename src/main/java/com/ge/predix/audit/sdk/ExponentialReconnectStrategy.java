@@ -57,12 +57,15 @@ public class ExponentialReconnectStrategy implements ReconnectStrategy {
             case SHUTDOWN:{
                 shutdown();
                 shouldReconnectNextInterval.set(false);
+                break;
             }
             case CONNECTING:{
                 shouldReconnectNextInterval.set(true);
+                break;
             }
             case CONNECTED:{
                 shouldReconnectNextInterval.set(false);
+                break;
             }
             default:
                 break;

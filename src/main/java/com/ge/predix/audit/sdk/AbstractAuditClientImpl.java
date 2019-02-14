@@ -6,7 +6,7 @@ import com.ge.predix.audit.sdk.exception.AuditException;
 import com.ge.predix.audit.sdk.message.AuditEvent;
 import com.ge.predix.audit.sdk.util.CustomLogger;
 import com.ge.predix.audit.sdk.util.LoggerUtils;
-import com.ge.predix.eventhub.stub.Ack;
+import com.ge.predix.eventhub.Ack;
 import com.ge.predix.eventhub.EventHubClientException;
 import com.ge.predix.eventhub.client.Client;
 import com.ge.predix.eventhub.configuration.EventHubConfiguration;

@@ -2,6 +2,8 @@ package com.ge.predix.audit.sdk.routing.tms;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ge.predix.audit.sdk.exception.TokenException;
+import com.ge.predix.audit.sdk.util.CustomLogger;
+import com.ge.predix.audit.sdk.util.LoggerUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpHeaders;
 import org.apache.http.HttpHost;
@@ -27,6 +29,7 @@ import static com.ge.predix.audit.sdk.util.RestUtils.*;
  * Http client that is able to fetch and cache Token from trusted Issuer.
  */
 public class TokenClient {
+    private static CustomLogger log = LoggerUtils.getLogger(TokenClient.class.getName());
     private static final long ONE_MINUTE = TimeUnit.MINUTES.toMillis(1);
 
     private final String clientId;
@@ -85,6 +88,7 @@ public class TokenClient {
         HttpHost target = new HttpHost(uaaUrl.getHost(), uaaUrl.getPort(), uaaUrl.getScheme());
         CloseableHttpResponse httpResponse =  client.execute(target, request);
         if(! (httpResponse.getStatusLine().getStatusCode() == HttpStatus.SC_OK)) {
+            log.info("OAuth token request {%s} to target {%s} ended with the following response {%s} ", request, target, httpResponse);
             throw new TokenException(String.format("Token client could not fetch token due to bad status code, response {%s}", httpResponse));
         }
         return httpResponse;
