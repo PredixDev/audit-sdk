@@ -25,4 +25,6 @@ public interface TracingHandler {
     boolean isTracingAck(Ack ack);
 
     boolean isTracingEvent(AuditEvent event);
+
+    void shutdown();
 }

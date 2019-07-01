@@ -62,6 +62,11 @@ public class TracingHandlerImpl implements TracingHandler {
     }
 
     @Override
+    public void shutdown() {
+        tracingMessageSender.shutdown();
+    }
+
+    @Override
     public void sendCheckpoint(AuditEvent event, LifeCycleEnum lifeCycleStatus, String message) {
         log.logWithPrefix(Level.INFO, logPrefix, "found tracing event. notifying LifeCycle FAIL");
         Checkpoint messageToSend = buildTracingMessage(this.auditTracingEvent.get(), lifeCycleStatus, message);

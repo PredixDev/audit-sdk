@@ -31,6 +31,7 @@ public class VcapLoaderServiceImpl implements VcapLoaderService {
     private static final String AUDIT_RETRY_INTERVAL_MILLIS = "AUDIT_RETRY_INTERVAL_MILLIS";
     private static final String AUDIT_MAX_CACHED_EVENTS = "AUDIT_MAX_CACHED_EVENTS";
     private static final String AUDIT_RECONNECT_POLICY = "AUDIT_RECONNECT_POLICY";
+    private static final String AUDIT_TRACE_ENABLED = "AUDIT_TRACE_ENABLED";
 
     private static CustomLogger log = LoggerUtils.getLogger(VcapLoaderServiceImpl.class.getName());
 
@@ -75,6 +76,9 @@ public class VcapLoaderServiceImpl implements VcapLoaderService {
     @Setter
     private String reconnectPolicy;
 
+    @Setter
+    private boolean traceEnabled;
+
     public VcapLoaderServiceImpl() {
         this.vcapServicesEnv = System.getenv(VCAP_SERVICES);
         this.auditServiceName = System.getenv(AUDIT_SERVICE_NAME);
@@ -96,6 +100,8 @@ public class VcapLoaderServiceImpl implements VcapLoaderService {
         this.retryIntervalMillis = System.getenv(AUDIT_RETRY_INTERVAL_MILLIS);
         this.maxCachedEvents = System.getenv(AUDIT_MAX_CACHED_EVENTS);
         this.reconnectPolicy = System.getenv(AUDIT_RECONNECT_POLICY);
+        String traceFromEnv = System.getenv(AUDIT_TRACE_ENABLED);
+        this.traceEnabled = traceFromEnv == null || !traceFromEnv.equalsIgnoreCase("false"); // default true
         this.deserializer = new VcapServicesDeserializer();
         GsonBuilder gsonBuilder = new GsonBuilder();
         gsonBuilder.disableHtmlEscaping()
@@ -217,7 +223,7 @@ public class VcapLoaderServiceImpl implements VcapLoaderService {
                     .tracingUrl(auditServiceCredentials.getTracingUrl())
                     .tracingToken(auditServiceCredentials.getTracingToken())
                     .tracingInterval(auditServiceCredentials.getTracingInterval())
-                    .traceEnabled(true)
+                    .traceEnabled(traceEnabled)
                     .cfAppName(vcapApplication.getName())
                     .auditServiceName(auditServiceName)
                     .auditZoneId(auditServiceCredentials.getAuditQueryApiScope().split("\\.")[2])

@@ -105,6 +105,7 @@ import static com.ge.predix.audit.sdk.util.LoggerUtils.generateLogPrefix;
 	public synchronized void shutdown() {
 		setStateAndNotify(AuditCommonClientState.SHUTDOWN);
 		Optional.ofNullable(tracingExecutor).ifPresent(ExecutorService::shutdownNow);
+		tracingHandler.shutdown();
 		client.shutdown();
 	}
 

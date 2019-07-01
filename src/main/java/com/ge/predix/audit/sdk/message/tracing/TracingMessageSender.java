@@ -6,4 +6,6 @@ package com.ge.predix.audit.sdk.message.tracing;
 
 public interface TracingMessageSender {
     void sendTracingMessage(Checkpoint checkpoint);
+
+    void shutdown();
 }

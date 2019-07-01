@@ -35,4 +35,9 @@ public class TracingHandleEmptyImpl implements TracingHandler {
     public boolean isTracingEvent(AuditEvent event) {
         return false;
     }
+
+    @Override
+    public void shutdown() {
+
+    }
 }

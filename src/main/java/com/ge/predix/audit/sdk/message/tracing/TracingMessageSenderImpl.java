@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ge.predix.audit.sdk.util.CustomLogger;
 import com.ge.predix.audit.sdk.util.LoggerUtils;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.http.HttpHost;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
@@ -14,7 +15,7 @@ import org.apache.http.impl.client.HttpClients;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URISyntaxException;
-import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.logging.Level;
 
@@ -33,7 +34,7 @@ public class TracingMessageSenderImpl implements TracingMessageSender {
 
     private ObjectMapper objectMapper;
     private URIBuilder uriBuilder;
-    private Executor executor;
+    private ExecutorService executor;
 
     public TracingMessageSenderImpl(String endpoint, String token)
             throws URISyntaxException {
@@ -45,7 +46,7 @@ public class TracingMessageSenderImpl implements TracingMessageSender {
         this.token = token;
         this.objectMapper = new ObjectMapper();
         this.uriBuilder = new URIBuilder(destination);
-        this.executor = Executors.newFixedThreadPool(1);
+        this.executor = Executors.newFixedThreadPool(1, new ThreadFactoryBuilder().setNameFormat("TracingMessageSenderImpl-%d").build());
         this.httpClient = closeableHttpClient;
     }
 
@@ -77,4 +78,9 @@ public class TracingMessageSenderImpl implements TracingMessageSender {
         request.setHeader(AUTHORIZATION, BASIC + token);
         return request;
     }
+
+    public void shutdown() {
+        executor.shutdownNow();
+    }
+
 }
