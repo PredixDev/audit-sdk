@@ -46,7 +46,7 @@ public class TracingMessageSenderImpl implements TracingMessageSender {
         this.token = token;
         this.objectMapper = new ObjectMapper();
         this.uriBuilder = new URIBuilder(destination);
-        this.executor = Executors.newFixedThreadPool(1, new ThreadFactoryBuilder().setNameFormat("TracingMessageSenderImpl-%d").build());
+        this.executor = Executors.newFixedThreadPool(1, new ThreadFactoryBuilder().setNameFormat("AUDIT-TracingMessageSenderImpl-%d").build());
         this.httpClient = closeableHttpClient;
     }
 

@@ -34,6 +34,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Queues;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -81,7 +82,7 @@ public class AuditClientAsyncImpl<T extends AuditEvent> extends AbstractAuditCli
 			this.queueSize = configuration.getMaxNumberOfEventsInCache();
 			this.eventQueue = Queues.newLinkedBlockingQueue(queueSize);
 
-			retryExecutorService = Executors.newScheduledThreadPool(1);
+			retryExecutorService = Executors.newScheduledThreadPool(1, new ThreadFactoryBuilder().setNameFormat("AUDIT-AuditClientAsyncImpl-%d").build());
 			retryExecutorService.scheduleAtFixedRate(
 					this::handleNotAcceptedEvents, noAckLimit, noAckLimit, TimeUnit.MILLISECONDS);
 			handleEventHubCallback();

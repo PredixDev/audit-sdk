@@ -11,6 +11,7 @@ import com.ge.predix.eventhub.EventHubClientException;
 import com.ge.predix.eventhub.client.Client;
 import com.ge.predix.eventhub.configuration.EventHubConfiguration;
 import com.ge.predix.eventhub.configuration.PublishConfiguration;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
@@ -77,7 +78,7 @@ import static com.ge.predix.audit.sdk.util.LoggerUtils.generateLogPrefix;
 		this.automaticTokenRenew = (configuration.getAuthenticationMethod() != AuthenticationMethod.AUTH_TOKEN );
 
 		if(configuration.isTraceEnabled()){
-			tracingExecutor = Executors.newScheduledThreadPool(1);
+			tracingExecutor = Executors.newScheduledThreadPool(1, new ThreadFactoryBuilder().setNameFormat("AUDIT-AbstractAuditClientImpl-%d").build());
 			startTracingRepetitive();
 		}
 		this.logPrefix = generateLogPrefix(configuration.getAuditZoneId());

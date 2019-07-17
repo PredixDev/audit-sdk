@@ -9,6 +9,7 @@ import com.ge.predix.audit.sdk.util.CustomLogger;
 import com.ge.predix.audit.sdk.util.LoggerUtils;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 import java.util.Map;
 import java.util.Optional;
@@ -28,7 +29,7 @@ public class AsyncClientHolderICacheImpl<T extends AuditEvent> implements ICache
     public AsyncClientHolderICacheImpl(AuditAsyncShutdownHandler<T> shutdownHandler, AuditCacheRefresher<T> refresher,
                                        long connectionLifeTime, int numOfConnections, long refreshPeriod){
         tenantClientCache = buildCache(shutdownHandler, connectionLifeTime, numOfConnections);
-        maintenanceExecutor = new ScheduledThreadPoolExecutor(1);
+        maintenanceExecutor = new ScheduledThreadPoolExecutor(1, new ThreadFactoryBuilder().setNameFormat("AUDIT-AsyncClientHolderICacheImpl-%d").build());
         this.shutdownHandler = shutdownHandler;
         startCacheRefresh(refresher, refreshPeriod);
     }

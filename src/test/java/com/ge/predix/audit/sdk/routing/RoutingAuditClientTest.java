@@ -6,6 +6,7 @@ import com.ge.predix.audit.sdk.exception.RoutingAuditException;
 import com.ge.predix.audit.sdk.message.AuditEnums;
 import com.ge.predix.audit.sdk.message.AuditEventV2;
 import com.google.common.collect.Queues;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -26,7 +27,7 @@ import static org.mockito.Mockito.*;
 @SuppressWarnings("unchecked")
 public class RoutingAuditClientTest {
 
-    private ExecutorService executorService = Executors.newFixedThreadPool(1);
+    private ExecutorService executorService = Executors.newFixedThreadPool(1, new ThreadFactoryBuilder().setNameFormat("AUDIT-RoutingAuditClientTest-%d").build());
     private RoutingTestHelper<AuditEventV2> cb = new RoutingTestHelper<>();
     private RoutingAuditPublisher<AuditEventV2> publisher = mock(RoutingAuditPublisher.class);
     private AtomicReference<AuditClientState> atomicReference = spy(new AtomicReference<>(AuditClientState.CONNECTED));
@@ -121,7 +122,7 @@ public class RoutingAuditClientTest {
     @Test
     public void shouldNotLetAuditWhenStatusIsShutdown() {
         routingAuditClient = new RoutingAuditClient<>(Queues.newLinkedBlockingQueue(2),
-                Executors.newFixedThreadPool(1), publisher, new AtomicReference<>(AuditClientState.SHUTDOWN), cb);
+                Executors.newFixedThreadPool(1, new ThreadFactoryBuilder().setNameFormat("AUDIT-RoutingAuditClientTest-%d").build()), publisher, new AtomicReference<>(AuditClientState.SHUTDOWN), cb);
 
         assertThatThrownBy(() -> routingAuditClient.audit(AuditEventV2.builder().publisherType(AuditEnums.PublisherType.APP_SERVICE)
                 .categoryType(AuditEnums.CategoryType.ADMINISTRATIONS)

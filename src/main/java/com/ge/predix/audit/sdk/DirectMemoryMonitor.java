@@ -2,6 +2,7 @@ package com.ge.predix.audit.sdk;
 
 import com.ge.predix.audit.sdk.util.CustomLogger;
 import com.ge.predix.audit.sdk.util.LoggerUtils;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.netty.util.internal.PlatformDependent;
 
 import java.lang.reflect.Field;
@@ -45,7 +46,7 @@ public class DirectMemoryMonitor {
              if (!initialized) {
                  initialized = true;
                  directMemoryCounter = initDirectMemoryCounter();
-                 executorService = Executors.newSingleThreadScheduledExecutor();
+                 executorService = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryBuilder().setNameFormat("AUDIT-DirectMemoryMonitor-%d").build());
                  executorService.scheduleAtFixedRate(this::printDirectMemoryCount, 1, 10, TimeUnit.SECONDS);
              }
              else {

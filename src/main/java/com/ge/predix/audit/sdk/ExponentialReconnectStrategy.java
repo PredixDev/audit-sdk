@@ -2,6 +2,7 @@ package com.ge.predix.audit.sdk;
 
 import com.ge.predix.audit.sdk.util.CustomLogger;
 import com.ge.predix.audit.sdk.util.LoggerUtils;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -32,7 +33,7 @@ public class ExponentialReconnectStrategy implements ReconnectStrategy {
 
     public ExponentialReconnectStrategy(Runnable actionToPerform, String logPrefix) {
         this.logPrefix = logPrefix;
-        threadExecutor = Executors.newSingleThreadScheduledExecutor();
+        threadExecutor = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryBuilder().setNameFormat("AUDIT-ExponentialReconnectStrategy-%d").build());
         curIndex = new AtomicInteger(0);
         this.actionToPerform = actionToPerform;
         isBetweenIntervals = new AtomicBoolean(false);

@@ -23,6 +23,7 @@ import com.ge.predix.audit.sdk.util.ExceptionUtils;
 import com.ge.predix.audit.sdk.util.LoggerUtils;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Queues;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 
@@ -67,7 +68,7 @@ public class RoutingAuditClient<T extends AuditEvent> {
             monitor.startMeasuringDirectMemory();
         }
         routingAuditPublisher = init(configuration, callback);
-        executor = Executors.newSingleThreadExecutor();
+        executor = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("AUDIT-RoutingAuditClient-%d").build());
         handleEvents();
     }
 
@@ -189,7 +190,7 @@ public class RoutingAuditClient<T extends AuditEvent> {
             AuditEventsConverter converter = new AuditEventsConverter(new AppNameClient(tokenClient, appNameConfig.getAppNamePrefix()));
             //shutdown client
             AuditAsyncShutdownHandler<T> shutdownClient = new AuditAsyncShutdownHandler<>(configuration.getTenantAuditConfig(), tokenServiceClient,
-                    Executors.newFixedThreadPool(routingResourceConfig.getNumOfConnections()));
+                    Executors.newFixedThreadPool(routingResourceConfig.getNumOfConnections(), new ThreadFactoryBuilder().setNameFormat("AUDIT-RoutingAuditClient(shutdown)-%d").build()));
 
             //Dedicated tenants cache
            ICache<String, AuditAsyncClientHolder<T>> dedicatedClients = new AsyncClientHolderICacheImpl<>(shutdownClient,
