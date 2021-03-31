@@ -17,7 +17,7 @@
         <eventhub.sdk.version>2.2.4</eventhub.sdk.version>
         <lombok.version>1.18.4</lombok.version>
         <jacoco.version>0.7.9</jacoco.version>
-        <guava.version>26.0-jre</guava.version>
+        <guava.version>29.0-jre</guava.version>
     </properties>
 
     <dependencyManagement>
